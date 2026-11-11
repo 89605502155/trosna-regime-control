@@ -108,3 +108,23 @@ def test_confidence_options(checks_csv, capsys):
     capsys.readouterr()
     assert main(["analyze", str(checks_csv), "--confidence", "1.2"]) == 2
     assert "confidence" in capsys.readouterr().err
+
+
+def test_analyze_formula_and_scale_options(checks_csv, capsys) -> None:
+    assert (
+        main(["analyze", str(checks_csv), "--json", "--formula", "linear", "--scale", "1.5"]) == 0
+    )
+    data = json.loads(capsys.readouterr().out)
+    assert data["n_checks"] > 300
+    assert main(["analyze", str(checks_csv), "--json"]) == 0
+    assert json.loads(capsys.readouterr().out)["n_checks"] == data["n_checks"]
+
+
+def test_analyze_rejects_bad_scale_and_formula(checks_csv, capsys) -> None:
+    assert main(["analyze", str(checks_csv), "--scale", "0"]) == 2
+    assert "scale" in capsys.readouterr().err
+    assert main(["analyze", str(checks_csv), "--p-star", "1.5"]) == 2
+    assert "p_star" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        main(["analyze", str(checks_csv), "--formula", "log"])
+    capsys.readouterr()

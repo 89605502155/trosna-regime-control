@@ -19,7 +19,7 @@ print("true rate            0.05000 1/s")
 print(f"naive N/T            {est.naive:.5f} 1/s")
 print(f"debiased             {est.debiased:.5f} 1/s")
 
-# Rule A: the interval that makes a share p* = 0.3 of the checks move memory.
+# Rule A (exact): the interval at which a move has probability p* = 0.3 under the rate.
 bounds = IntervalBounds(lo=1.0, hi=10.0)
 print(f"rule A interval      {float(rule_a(est.debiased, 0.3, bounds)):.2f} s")
 

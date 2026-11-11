@@ -12,7 +12,8 @@ returns the time of the next check and the regime. The loop is:
    ``confidence`` (default 0.95, one-sided). After an alarm the baseline is the
    fast estimate, the detector restarts, and the regime is non-stationary for
    ``hold_s`` seconds;
-3. in the stationary regime the interval is ``p*/λ̂`` (rule A) or the
+3. in the stationary regime the interval is ``−ln(1 − p*)/λ̂`` (rule A, exact
+   formula by default; ``p*/λ̂`` with ``formula="linear"``) or the
    square-root law (rule B) (idea 2). In the non-stationary regime it is the
    smallest bound, so the system relearns quickly.
 
@@ -39,7 +40,7 @@ from typing import Any, Literal
 
 from .detectors import TwoSided
 from .intensity import ForgettingRate
-from .intervals import IntervalBounds, rule_a, rule_b
+from .intervals import IntervalBounds, check_rule_a, rule_a, rule_b
 from .normal import baseline_z, check_z, z_for_confidence
 from .scheduler import Step
 from .validation import validate_decision
@@ -58,7 +59,12 @@ class ControllerConfig:
     rule : {"A", "B"}
         Interval rule: ``p*/λ̂`` or the square-root law.
     p_star : float
-        Target share of checks with a move (rule A).
+        Target probability of a move in one interval, in ``(0, 1)`` (rule A).
+    formula : {"exact", "linear"}
+        Form of rule A: ``"exact"`` gives ``Δt = −ln(1 − p*)/λ̂`` (default),
+        ``"linear"`` gives ``Δt = p*/λ̂``. Ignored by rule B.
+    scale : float
+        Positive multiplier of the rule A interval. Default 1. Ignored by rule B.
     c1_over_c2 : float
         Ratio of the cost of a check to the cost of a second of delay, s (rule B).
     bounds : IntervalBounds
@@ -110,6 +116,8 @@ class ControllerConfig:
     z: float | None = None
     prior_rate: float | None = None
     prior_time_s: float = 0.0
+    formula: Literal["exact", "linear"] = "exact"
+    scale: float = 1.0
 
     def __post_init__(self) -> None:
         """Check the parameters."""
@@ -119,9 +127,7 @@ class ControllerConfig:
         if self.tau_s <= 0.0 or self.tau_fast_s <= 0.0:
             msg = "memory times must be positive"
             raise ValueError(msg)
-        if not 0.0 < self.p_star < 1.0:
-            msg = "p_star must be in (0, 1)"
-            raise ValueError(msg)
+        check_rule_a(self.p_star, self.formula, self.scale)
         if self.c1_over_c2 <= 0.0:
             msg = "c1_over_c2 must be positive"
             raise ValueError(msg)
@@ -319,7 +325,14 @@ class RegimeController:
     def _plan(self, rate: float) -> float:
         cfg = self.config
         if cfg.rule == "A":
-            value = rule_a(rate, cfg.p_star, cfg.bounds, fallback=cfg.bounds.hi)
+            value = rule_a(
+                rate,
+                cfg.p_star,
+                cfg.bounds,
+                fallback=cfg.bounds.hi,
+                formula=cfg.formula,
+                scale=cfg.scale,
+            )
         else:
             value = rule_b(rate, cfg.c1_over_c2, cfg.bounds, fallback=cfg.bounds.hi)
         return float(value)
@@ -358,6 +371,10 @@ class RegimeController:
             msg = "unsupported state version"
             raise ValueError(msg)
         cfg_data = dict(data["config"])
+        # States saved before the fields `formula` and `scale` existed used the
+        # linear rule A with scale 1. Restoring them keeps that behaviour.
+        cfg_data.setdefault("formula", "linear")
+        cfg_data.setdefault("scale", 1.0)
         cfg_data["bounds"] = IntervalBounds(**cfg_data["bounds"])
         ctrl = cls(ControllerConfig(**cfg_data))
         ctrl.started = bool(data["started"])

@@ -32,7 +32,7 @@ print(allocate(1000.0, w, [100.0, 100.0, 100.0]).memory)
 | Имя | Назначение |
 |---|---|
 | `IntervalBounds(lo, hi)` | границы интервала, по умолчанию 1 с … 10 с |
-| `rule_a(rate, p_star)` | `Δt = p*/λ̂` |
+| `rule_a(rate, p_star, bounds, fallback, formula, scale)` | `Δt = scale·g(p*)/λ̂`, `g = −ln(1 − p*)` (`formula="exact"`, по умолчанию) или `g = p*` (`"linear"`) |
 | `rule_b(rate, c1_over_c2)` | `Δt = √(2C₁/(λ̂C₂))` |
 | `rule_c(drift, delta)` | `Δt = δ/v` |
 | `exact_interval(rate, c1_over_c2)` | точный оптимум затрат, бисекция, без SciPy |

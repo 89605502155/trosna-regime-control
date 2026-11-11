@@ -24,13 +24,16 @@ inverts `P(b = 1) = 1 − e^{−λΔt}` and is the one to use.
 
 ## 2. The next interval from a rule
 
-Rule A makes a share `p*` of the checks move memory. Rule B minimises the cost
+Rule A gives the interval `−ln(1 − p*)/λ̂` (the exact form): with the true rate,
+the probability of a move in one interval is `p*`. The linear form `p*/λ̂` is
+its first-order approximation and is shorter by about 19 % at `p* = 0.3`. Rule B minimises the cost
 of checks plus delay. Both are clipped to `[1 s, 10 s]` by default.
 
 ```python
 from trosna_regime_control import rule_a, rule_b
 
-print(float(rule_a(0.05, p_star=0.3)))  # 6.0 s
+print(round(float(rule_a(0.05, p_star=0.3)), 2))  # 7.13 s, exact
+print(round(float(rule_a(0.05, p_star=0.3, formula="linear")), 2))  # 6.0 s, linear
 print(round(float(rule_b(0.05, c1_over_c2=2.0)), 2))  # 8.94 s
 ```
 

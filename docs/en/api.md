@@ -32,7 +32,7 @@ print(allocate(1000.0, w, [100.0, 100.0, 100.0]).memory)
 | Name | Purpose |
 |---|---|
 | `IntervalBounds(lo, hi)` | bounds of the interval, default 1 s … 10 s |
-| `rule_a(rate, p_star)` | `Δt = p*/λ̂` |
+| `rule_a(rate, p_star, bounds, fallback, formula, scale)` | `Δt = scale·g(p*)/λ̂`, `g = −ln(1 − p*)` (`formula="exact"`, default) or `g = p*` (`"linear"`) |
 | `rule_b(rate, c1_over_c2)` | `Δt = √(2C₁/(λ̂C₂))` |
 | `rule_c(drift, delta)` | `Δt = δ/v` |
 | `exact_interval(rate, c1_over_c2)` | exact cost optimum, bisection, no SciPy |
@@ -41,7 +41,8 @@ print(allocate(1000.0, w, [100.0, 100.0, 100.0]).memory)
 from trosna_regime_control import IntervalBounds, exact_interval, rule_a, rule_b
 
 bounds = IntervalBounds(lo=1.0, hi=10.0)
-print(float(rule_a(0.05, 0.3, bounds)), round(float(rule_b(0.05, 2.0, bounds)), 2))
+print(round(float(rule_a(0.05, 0.3, bounds)), 2), round(float(rule_b(0.05, 2.0, bounds)), 2))
+print(round(float(rule_a(0.05, 0.3, bounds, formula="linear")), 2))  # 6.0, the linear form
 print(round(exact_interval(0.05, 2.0), 2))
 ```
 
@@ -103,9 +104,10 @@ print(round(flicker_stats(0.05).switches_per_hour, 1))
 ## Controller
 
 `ControllerConfig` has the fields `tau_s`, `rule` (`"A"` or `"B"`), `p_star`,
-`c1_over_c2`, `bounds`, `arl_s`, `kappa_up`, `kappa_down`, `hold_s`,
+`formula` (`"exact"` by default, or `"linear"`), `scale` (1.0), `c1_over_c2`, `bounds`, `arl_s`, `kappa_up`, `kappa_down`, `hold_s`,
 `warmup_s`, `tau_fast_s`, `min_rate`, `confidence` (default 0.95), `z`
-(default `None`), `prior_rate`, `prior_time_s`. See the docstring of each field.
+(default `None`), `prior_rate`, `prior_time_s`. `formula` and `scale` act on rule A only.
+See the docstring of each field.
 `z_effective` is the number of standard deviations in use.
 
 `RegimeController(config=None, *, confidence=None, z=None)`. The keyword

@@ -15,6 +15,11 @@ preceded it was never published; the changes against that draft are listed at th
   `allocate` with minimum and maximum bounds.
 * Monitoring intervals by scale-invariant rules A and B, the cost rate, the
   exact optimum `exact_interval` (no SciPy) and rule C.
+* Rule A is `Δt = scale · g(p*)/λ̂` with `g = −ln(1 − p*)` by default (exact
+  Poisson inversion, about 19 % longer than the linear `p*/λ̂` at `p* = 0.3`).
+  Options `formula` (`"exact"` or `"linear"`) and `scale` (positive, default 1)
+  in `rule_a`, `ControllerConfig` and the `analyze` command (`--formula`, `--scale`).
+  State version 2 restored without these fields keeps the linear rule.
 * Real-time decision intensity with exponential forgetting: `ForgettingRate`
   with the naive and debiased estimates and confidence bounds.
 * Martingale detectors on Bernoulli decisions at irregular intervals:

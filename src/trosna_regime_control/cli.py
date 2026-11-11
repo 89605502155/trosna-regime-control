@@ -38,7 +38,24 @@ def _build_parser() -> argparse.ArgumentParser:
     a.add_argument("trace", help="path to checks.csv")
     a.add_argument("--tau", type=float, default=1800.0, help="memory of the rate estimate, s")
     a.add_argument("--rule", choices=("A", "B"), default="A", help="interval rule")
-    a.add_argument("--p-star", type=float, default=0.3, help="target share of moves (rule A)")
+    a.add_argument(
+        "--p-star",
+        type=float,
+        default=0.3,
+        help="probability of a move in one interval, in (0, 1) (rule A)",
+    )
+    a.add_argument(
+        "--formula",
+        choices=("exact", "linear"),
+        default="exact",
+        help="rule A: exact -ln(1-p*)/rate (default) or linear p*/rate",
+    )
+    a.add_argument(
+        "--scale",
+        type=float,
+        default=1.0,
+        help="positive multiplier of the rule A interval (default 1)",
+    )
     a.add_argument("--c1-over-c2", type=float, default=2.0, help="C1/C2 in seconds (rule B)")
     a.add_argument("--arl", type=float, default=3600.0, help="detector ARL, s")
     a.add_argument(
@@ -113,6 +130,8 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
         tau_s=args.tau,
         rule=args.rule,
         p_star=args.p_star,
+        formula=args.formula,
+        scale=args.scale,
         c1_over_c2=args.c1_over_c2,
         bounds=IntervalBounds(),
         arl_s=args.arl,

@@ -1,4 +1,5 @@
 import json
+import math
 
 import numpy as np
 import pytest
@@ -62,8 +63,12 @@ def test_controller_needs_start() -> None:
         RegimeController().record_decision(1.0, True)
 
 
-def test_controller_stationary_uses_rule_a() -> None:
-    ctrl = RegimeController(ControllerConfig(rule="A", p_star=0.3, warmup_s=1e9))
+@pytest.mark.parametrize(
+    ("formula", "g"),
+    [("exact", -math.log(0.7)), ("linear", 0.3)],
+)
+def test_controller_stationary_uses_rule_a(formula: str, g: float) -> None:
+    ctrl = RegimeController(ControllerConfig(rule="A", p_star=0.3, formula=formula, warmup_s=1e9))
     assert ctrl.start(0.0) == pytest.approx(10.0)
     t = 0.0
     for _ in range(200):
@@ -71,7 +76,47 @@ def test_controller_stationary_uses_rule_a() -> None:
         step = ctrl.record_decision(t, decision=(int(t) % 3 == 0))
     assert not step.nonstationary
     assert step.alarm is None
-    assert step.next_dt == pytest.approx(min(max(0.3 / step.rate, 1.0), 10.0))
+    assert step.next_dt == pytest.approx(min(max(g / step.rate, 1.0), 10.0))
+
+
+def test_controller_default_is_exact_and_scale_applies() -> None:
+    cfg = ControllerConfig()
+    assert cfg.formula == "exact"
+    assert cfg.scale == 1.0
+    wide = IntervalBounds(lo=1e-9, hi=1e9)
+    base = RegimeController(ControllerConfig(bounds=wide, warmup_s=1e9))
+    base.start(0.0)
+    doubled = RegimeController(ControllerConfig(bounds=wide, warmup_s=1e9, scale=2.0))
+    doubled.start(0.0)
+    t = 0.0
+    for _ in range(100):
+        t += 4.0
+        a = base.record_decision(t, decision=(int(t) % 3 == 0))
+        b = doubled.record_decision(t, decision=(int(t) % 3 == 0))
+    assert b.next_dt == pytest.approx(2.0 * a.next_dt)
+
+
+def test_controller_config_validation() -> None:
+    with pytest.raises(ValueError, match="formula"):
+        ControllerConfig(formula="log")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="scale"):
+        ControllerConfig(scale=0.0)
+    with pytest.raises(ValueError, match="p_star"):
+        ControllerConfig(p_star=1.0)
+
+
+def test_state_without_formula_fields_restores_linear_rule() -> None:
+    # A state saved before the fields existed was produced by the linear rule.
+    cfg = ControllerConfig(warmup_s=1e9)
+    ctrl = RegimeController(cfg)
+    ctrl.start(0.0)
+    data = ctrl.to_dict()
+    assert data["config"]["formula"] == "exact"
+    del data["config"]["formula"]
+    del data["config"]["scale"]
+    restored = RegimeController.from_dict(data)
+    assert restored.config.formula == "linear"
+    assert restored.config.scale == 1.0
 
 
 def test_controller_rule_b_runs() -> None:

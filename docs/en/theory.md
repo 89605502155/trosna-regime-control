@@ -17,7 +17,7 @@ The library replaces the two decisions with methods that have a rationale:
 
 | Decision | Current rule | Replacement |
 |---|---|---|
-| interval to the next check | table by `S` (5 bits) | `Δt = p*/λ̂` or `Δt = √(2C₁/(λ̂C₂))` |
+| interval to the next check | table by `S` (5 bits) | `Δt = −ln(1 − p*)/λ̂` or `Δt = √(2C₁/(λ̂C₂))` |
 | regime | `S ≥ 3` | Shiryaev–Roberts detector on the decisions |
 | shares of memory | not specified | clr coordinates with bounds and a dead band |
 
@@ -47,8 +47,12 @@ If all memory sizes and all units of time are multiplied by a constant, the
 rule must give the same relative result. So the rule uses dimensionless
 quantities and a cost model.
 
-* **Rule A**: `Δt = p* / λ̂`. The share of checks with a move tends to `p*`.
-  The Poisson model is not needed for this.
+* **Rule A**: `Δt = −ln(1 − p*) / λ̂`. Under a Poisson model with rate `λ`,
+  `P(N(Δt) ≥ 1) = 1 − e^{−λΔt} = p*` gives this interval. The linear form
+  `Δt = p*/λ̂` is the first-order Taylor term. It is smaller: at `p* = 0.3` the
+  exact interval is about 19 % longer. The option `formula="linear"` selects it,
+  and `scale` multiplies the interval. With the naive estimate `N/T` the share of
+  moves is about 0.36 in steady state, not `p*`; the linear form keeps it at `p*`.
 * **Rule B**: `Δt = √(2 C₁ / (λ̂ C₂))`. It minimises the cost rate
   `J(Δt) = C₁/Δt + λC₂Δt/2`, where `C₁` is the cost of a check and `C₂` the
   cost of a second of delay. Only the ratio `C₁/C₂` matters. The exact

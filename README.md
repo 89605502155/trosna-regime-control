@@ -15,8 +15,8 @@ of bits into the three things the manager needs:
   Shiryaev–Roberts detector with a guaranteed mean time to a false alarm, and it
   works with irregular, policy-dependent intervals;
 * **the next interval**: from a real-time estimate of the decision intensity
-  with exponential forgetting, by the scale-invariant rules `Δt = p*/λ̂` and
-  `Δt = √(2C₁/(λ̂C₂))`, not by a hand-made table;
+  with exponential forgetting, by the scale-invariant rules `Δt = −ln(1 − p*)/λ̂`
+  (or `p*/λ̂`, the linear form) and `Δt = √(2C₁/(λ̂C₂))`, not by a hand-made table;
 * **the allocation**: memory shares as points of the simplex, perturbed in the
   clr coordinates, with minimum and maximum bounds and a dead band δ against
   needless reallocations.
