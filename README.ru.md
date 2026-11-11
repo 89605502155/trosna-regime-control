@@ -31,8 +31,8 @@
 [Задачи](https://github.com/89605502155/trosna-regime-control/issues)
 
 Библиотека сопровождает статью о группах Ли и мартингалах в адаптивном управлении
-памятью KVM. Автор — Андрей Ферубко, Брянский государственный инженерно-технологический
-университет (БГИТУ). Теория описана в
+памятью KVM. Авторы — Андрей Ферубко и Олег Дмитриевич Казаков, Брянский государственный
+инженерно-технологический университет (БГИТУ). Теория описана в
 [docs/ru/theory.md](https://github.com/89605502155/trosna-regime-control/blob/main/docs/ru/theory.md).
 
 ## Установка
@@ -57,7 +57,7 @@ interval = controller.start(t)  # секунды до первой провер�
 for _ in range(20):
     t += interval
     moved = False  # реальное решение системы: True, если память перераспределяли
-    step = controller.update(t, moved)
+    step = controller.record_decision(t, moved)
     interval = step.next_dt
 print(f"следующая проверка через {step.next_dt:.1f} с, нестационарный режим: {step.nonstationary}")
 ```
@@ -114,6 +114,13 @@ uv run pytest -m slow    # Монте-Карло проверка ARL (мину�
 См. [CITATION.cff](https://github.com/89605502155/trosna-regime-control/blob/main/CITATION.cff)
 или кнопку «Cite this repository» на GitHub.
 
+## Авторы
+
+- Ферубко Андрей, [ORCID 0009-0006-5625-137X](https://orcid.org/0009-0006-5625-137X)
+- Казаков Олег Дмитриевич, [ORCID 0000-0001-9665-8138](https://orcid.org/0000-0001-9665-8138)
+
+Брянский государственный инженерно-технологический университет (БГИТУ).
+
 ## Лицензия
 
-MIT. Copyright (c) 2026 Andrey Ferubko. См. [LICENSE](https://github.com/89605502155/trosna-regime-control/blob/main/LICENSE).
+MIT. Copyright (c) 2026 Andrey Ferubko, Oleg Kazakov. См. [LICENSE](https://github.com/89605502155/trosna-regime-control/blob/main/LICENSE).

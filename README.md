@@ -32,8 +32,8 @@ Documentation: [English](https://github.com/89605502155/trosna-regime-control/tr
 [Issues](https://github.com/89605502155/trosna-regime-control/issues)
 
 The library accompanies the article on Lie groups and martingales in adaptive
-KVM memory management by Andrey Ferubko, Bryansk State Engineering-Technological
-University (BGITU). The theory is in
+KVM memory management by Andrey Ferubko and Oleg Kazakov, Bryansk State
+Engineering-Technological University (BGITU). The theory is in
 [docs/en/theory.md](https://github.com/89605502155/trosna-regime-control/blob/main/docs/en/theory.md).
 
 ## Installation
@@ -58,7 +58,7 @@ interval = controller.start(t)  # seconds until the first check
 for _ in range(20):
     t += interval
     moved = False  # the real decision of the system: True if memory was moved
-    step = controller.update(t, moved)
+    step = controller.record_decision(t, moved)
     interval = step.next_dt
 print(f"next check in {step.next_dt:.1f} s, non-stationary: {step.nonstationary}")
 ```
@@ -114,6 +114,13 @@ no body. Install the hook once per clone with `scripts/install_hooks.sh`.
 See [CITATION.cff](https://github.com/89605502155/trosna-regime-control/blob/main/CITATION.cff)
 or the "Cite this repository" button on GitHub.
 
+## Authors
+
+- Andrey Ferubko, [ORCID 0009-0006-5625-137X](https://orcid.org/0009-0006-5625-137X)
+- Oleg Kazakov, [ORCID 0000-0001-9665-8138](https://orcid.org/0000-0001-9665-8138)
+
+Bryansk State Engineering-Technological University (BGITU).
+
 ## License
 
-MIT. Copyright (c) 2026 Andrey Ferubko. See [LICENSE](https://github.com/89605502155/trosna-regime-control/blob/main/LICENSE).
+MIT. Copyright (c) 2026 Andrey Ferubko, Oleg Kazakov. See [LICENSE](https://github.com/89605502155/trosna-regime-control/blob/main/LICENSE).
