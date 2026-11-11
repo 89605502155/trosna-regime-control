@@ -47,11 +47,14 @@ print(round(exact_interval(0.05, 2.0), 2))
 
 ## Интенсивность (идея 3)
 
-`ForgettingRate(tau, prior_rate=None, prior_time=0.0, prior_dt=5.0)`:
+`ForgettingRate(tau, prior_rate=None, prior_time=0.0, prior_dt=5.0, *, confidence=0.95, z=None)`:
 
-* `update(decision, dt) -> float`: учесть проверку, вернуть наивную оценку;
+* `record_check(decision, dt) -> float`: учесть проверку, вернуть наивную оценку;
 * `naive`, `debiased`: оценки, 1/с (NaN до данных);
-* `upper_naive(z)`, `lower_naive(z)`: доверительные границы наивной оценки;
+* `upper_naive()`, `lower_naive()`: односторонние доверительные границы наивной
+  оценки с `z` стандартными отклонениями. `z` берётся из `confidence` (по умолчанию
+  0,95, то есть `z = 1,6449`), либо задаётся напрямую параметром `z`;
+* `z`: число стандартных отклонений, которое используется;
 * `to_dict()`, `from_dict(data)`: состояние для хранения.
 
 `naive_bias(rate, dt)` даёт относительное смещение наивной оценки.
@@ -65,7 +68,7 @@ print(round(exact_interval(0.05, 2.0), 2))
 | `ShiryaevRoberts.for_arl(lam0, kappa, arl)` | порог, равный нужному ARL, в секундах |
 | `Cusum(lam0, kappa, h)` | статистика CUSUM |
 | `cusum_threshold_for_arl(arl)` | `h = ln(ARL)` |
-| `TwoSided(lam0_up, threshold, kappa_up, kappa_down, time_weighted, lam0_down)` | рост и спад; `update` возвращает `+1`, `−1` или `0` |
+| `TwoSided(lam0_up, threshold, kappa_up, kappa_down, time_weighted, lam0_down)` | рост и спад; `record_check` возвращает `+1`, `−1` или `0` |
 | `run_lengths(kind, threshold, lam_true, lam0, kappa, dt, n_runs, seed)` | Монте-Карло длины пробега, векторизовано |
 
 Функции `lorden_delay_bound`, `kl_rate_poisson` и `kl_per_check` лежат в
@@ -75,7 +78,7 @@ print(round(exact_interval(0.05, 2.0), 2))
 from trosna_regime_control import ShiryaevRoberts
 
 det = ShiryaevRoberts.for_arl(0.05, 2.0, arl=3600.0)
-print(det.update(1, 10.0), round(det.stat, 3))
+print(det.record_check(1, 10.0), round(det.stat, 3))
 ```
 
 ## Мигание эвристики (идея 3)
@@ -100,23 +103,27 @@ print(round(flicker_stats(0.05).switches_per_hour, 1))
 
 `ControllerConfig` содержит поля `tau_s`, `rule` (`"A"` или `"B"`), `p_star`,
 `c1_over_c2`, `bounds`, `arl_s`, `kappa_up`, `kappa_down`, `hold_s`,
-`warmup_s`, `tau_fast_s`, `min_rate`, `baseline_z`, `prior_rate`,
-`prior_time_s`. Описание каждого поля — в докстринге.
+`warmup_s`, `tau_fast_s`, `min_rate`, `confidence` (по умолчанию 0,95), `z`
+(по умолчанию `None`), `prior_rate`, `prior_time_s`. Описание каждого поля — в докстринге.
+`z_effective` — число стандартных отклонений, которое используется.
 
-`RegimeController(config)`:
+`RegimeController(config=None, *, confidence=None, z=None)`. Именованные аргументы
+заменяют уровень доверия из `config` (задайте один из них, не оба):
 
 * `start(t0) -> float`: начать, вернуть первый интервал;
-* `update(t, decision) -> Step`: учесть проверку;
+* `record_decision(t, decision) -> Step`: учесть проверку; проверяется функцией
+  `validate_decision`;
 * `baselines`, `rate`, `n_checks`, `n_alarms`: состояние;
 * `to_dict()`, `from_dict(data)`, `to_json()`, `from_json(text)`: сохранение и восстановление.
+  Версия состояния — 2. Состояние версии 1 не принимается.
 
 `Step` содержит `t_next`, `next_dt`, `nonstationary`, `alarm` (`"rise"`, `"fall"`
 или `None`) и `rate`.
 
 ## Планировщики и моделирование
 
-`Scheduler` — протокол с методами `start` и `update`. Его реализуют `FixedInterval(dt)`,
-`LegacyHeuristic` и `RegimeController`. `replay(scheduler, trace)` подаёт
+`Scheduler` — протокол с методами `start` и `record_decision`. Его реализуют `FixedInterval(dt)`,
+`LegacyHeuristic`, `UniformIntervals` и `RegimeController`. `replay(scheduler, trace)` подаёт
 записанную трассу. `simulate(scheduler, StepIntensity(...), horizon_s, seed,
 carryover)` прогоняет цикл на пуассоновском спросе. `UniformIntervals(lo, hi, seed)`
 даёт случайные интервалы, которые нужны для проверки модели.
@@ -129,7 +136,26 @@ carryover)` прогоняет цикл на пуассоновском спро
 сводку. `fit_cloglog(decisions, dt, burn_in) -> CloglogFit` проверяет модель.
 `ones_share_by_interval` даёт долю перераспределений по группам интервалов.
 
+## Проверка входа и нормальные квантили
+
+`validate_decision(t, decision, last_t=None) -> (float, bool)` проверяет одну проверку.
+Время должно быть конечным, неотрицательным и больше `last_t`. Решение — bool,
+numpy bool или целое 0 или 1. Дробные значения не принимаются: дробное решение
+не является исходом испытания Бернулли.
+
+`z_for_confidence(c)` даёт `Φ⁻¹(c)` для одностороннего уровня `0,5 ≤ c < 1`,
+а `norm_ppf(p)` — стандартный нормальный квантиль (AS 241 Вичуры, без SciPy).
+
+## Именование
+
+Каждый публичный метод, который принимает одно наблюдение и меняет состояние,
+называется `record_*`: `record_decision` у контроллера и планировщиков, `record_check`
+у оценки и детекторов. Имя `update` для этих методов не используется: оно не
+говорило, что метод делает. Переименование в неопубликованном черновике
+сделано без устаревших синонимов. См. [migration.md](migration.md).
+
 ## Ошибки
 
-Неверные параметры вызывают `ValueError` с сообщением. Вызов `update` до `start`
-вызывает `RuntimeError`. Файл неверного формата вызывает `ValueError` из `read_checks`.
+Неверные параметры вызывают `ValueError` с сообщением, неверный тип — `TypeError`.
+Вызов `record_decision` до `start` вызывает `RuntimeError`. Файл неверного формата
+вызывает `ValueError` из `read_checks`.

@@ -1,6 +1,6 @@
 """HEAVY: Monte Carlo of ARL and detection delay for the change detectors.
 
-Not run in CI and not run during development: each cell simulates thousands of
+Not in the test suite and not run during development: each cell simulates thousands of
 runs of up to ``max_steps`` checks. Expect hours on a laptop for the full grid.
 
 Output: ``out/arl_study/arl_delay.csv`` (one row per threshold and multiplier)

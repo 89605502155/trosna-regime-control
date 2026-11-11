@@ -19,7 +19,7 @@ Examples
 --------
 >>> est = ForgettingRate(tau=600.0)
 >>> for _ in range(3):
-...     _ = est.update(1, 5.0)
+...     _ = est.record_check(1, 5.0)
 >>> round(est.naive, 3)
 0.2
 """
@@ -31,6 +31,8 @@ from typing import Any
 
 import numpy as np
 import numpy.typing as npt
+
+from .normal import baseline_z
 
 
 class ForgettingRate:
@@ -46,6 +48,17 @@ class ForgettingRate:
         Pseudo-observation time of the prior, seconds.
     prior_dt : float
         Interval of the pseudo-checks of the prior, seconds.
+    confidence : float
+        One-sided confidence level of the bounds :meth:`upper_naive` and
+        :meth:`lower_naive`, ``0.5 ≤ confidence < 1``. Default 0.95.
+    z : float, optional
+        Number of standard deviations used by the bounds. If given, it replaces
+        ``confidence``.
+
+    Examples
+    --------
+    >>> round(ForgettingRate(tau=600.0, confidence=0.99).z, 4)
+    2.3263
     """
 
     def __init__(
@@ -54,6 +67,9 @@ class ForgettingRate:
         prior_rate: float | None = None,
         prior_time: float = 0.0,
         prior_dt: float = 5.0,
+        *,
+        confidence: float = 0.95,
+        z: float | None = None,
     ) -> None:
         if tau <= 0.0:
             msg = "tau must be positive"
@@ -62,13 +78,14 @@ class ForgettingRate:
             msg = "prior_time must be >= 0 and prior_dt > 0"
             raise ValueError(msg)
         self.tau = float(tau)
+        self.z = baseline_z(confidence, z)
         self.n_moves = 0.0
         rate0 = 0.0 if prior_rate is None else float(prior_rate)
         self.n_moves = rate0 * prior_time
         self.exposure = float(prior_time)
         self.n_checks = prior_time / prior_dt if prior_time > 0.0 else 0.0
 
-    def update(self, decision: float, dt: float) -> float:
+    def record_check(self, decision: float, dt: float) -> float:
         """Account for one check and return the naive rate.
 
         Parameters
@@ -112,27 +129,28 @@ class ForgettingRate:
         dbar = self.exposure / self.n_checks
         return -math.log1p(-p) / dbar
 
-    def upper_naive(self, z: float = 1.645) -> float:
+    def upper_naive(self) -> float:
         """Upper confidence bound of the naive rate, 1/s: ``(N + z√N + z²/2) / T``.
 
-        Uses the one-sided Poisson approximation with ``z`` standard deviations
-        (1.645 gives 95 %). The bound is used as a conservative baseline λ₀⁺:
-        the expected factor is at most 1 for every ``λ ≤ λ₀``, so a larger
-        baseline keeps the false-alarm guarantee. NaN before any data.
+        Uses the one-sided Poisson approximation with ``z = self.z`` standard
+        deviations (``z = 1.6449`` for 95 %). The bound is used as a conservative
+        baseline λ₀⁺: the expected factor is at most 1 for every ``λ ≤ λ₀``, so a
+        larger baseline keeps the false-alarm guarantee. NaN before any data.
 
         Examples
         --------
-        >>> est = ForgettingRate(tau=600.0)
-        >>> _ = est.update(1.0, 100.0)
-        >>> round(est.upper_naive(1.0), 4)
+        >>> est = ForgettingRate(tau=600.0, z=1.0)
+        >>> _ = est.record_check(1.0, 100.0)
+        >>> round(est.upper_naive(), 4)
         0.025
         """
         if self.exposure <= 0.0:
             return math.nan
         n = max(self.n_moves, 0.0)
+        z = self.z
         return (n + z * math.sqrt(n) + z * z / 2.0) / self.exposure
 
-    def lower_naive(self, z: float = 1.645) -> float:
+    def lower_naive(self) -> float:
         """Lower confidence bound of the naive rate, 1/s: ``max(0, N − z√N) / T``.
 
         Used as the baseline of the fall detector: its null is ``λ ≥ λ₀``, so a
@@ -140,15 +158,15 @@ class ForgettingRate:
 
         Examples
         --------
-        >>> est = ForgettingRate(tau=600.0)
-        >>> _ = est.update(1.0, 100.0)
-        >>> est.lower_naive(1.0)
+        >>> est = ForgettingRate(tau=600.0, z=1.0)
+        >>> _ = est.record_check(1.0, 100.0)
+        >>> est.lower_naive()
         0.0
         """
         if self.exposure <= 0.0:
             return math.nan
         n = max(self.n_moves, 0.0)
-        return max(0.0, n - z * math.sqrt(n)) / self.exposure
+        return max(0.0, n - self.z * math.sqrt(n)) / self.exposure
 
     def to_dict(self) -> dict[str, Any]:
         """State as a JSON-serialisable dictionary."""
@@ -157,12 +175,13 @@ class ForgettingRate:
             "n_moves": self.n_moves,
             "exposure": self.exposure,
             "n_checks": self.n_checks,
+            "z": self.z,
         }
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> ForgettingRate:
         """Restore the state written by :meth:`to_dict`."""
-        est = cls(float(data["tau"]))
+        est = cls(float(data["tau"]), z=float(data["z"]))
         est.n_moves = float(data["n_moves"])
         est.exposure = float(data["exposure"])
         est.n_checks = float(data["n_checks"])

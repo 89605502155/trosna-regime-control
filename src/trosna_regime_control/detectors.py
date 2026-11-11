@@ -286,7 +286,7 @@ class ShiryaevRoberts:
         """Detector with threshold equal to the required ARL (in seconds if time-weighted)."""
         return cls(lam0, kappa, arl, time_weighted=time_weighted)
 
-    def update(self, decision: float, dt: float) -> bool:
+    def record_check(self, decision: float, dt: float) -> bool:
         """Account for one check. Returns True on an alarm, and then resets."""
         f = float(lr_factor(decision, dt, self.lam0, self.kappa))
         weight = dt if self.time_weighted else 1.0
@@ -331,7 +331,7 @@ class Cusum:
         self.h = float(h)
         self.stat = float(stat)
 
-    def update(self, decision: float, dt: float) -> bool:
+    def record_check(self, decision: float, dt: float) -> bool:
         """Account for one check. Returns True on an alarm, and then resets."""
         log_f = float(np.log(lr_factor(decision, dt, self.lam0, self.kappa)))
         self.stat = max(0.0, self.stat + log_f)
@@ -360,14 +360,14 @@ class TwoSided:
 
     The rise detector has the null ``λ ≤ λ₀⁺`` and the fall detector the null
     ``λ ≥ λ₀⁻``, so each may use its own baseline (an upper and a lower
-    confidence bound). :meth:`update` returns ``+1`` on an alarm about a rise,
+    confidence bound). :meth:`record_check` returns ``+1`` on an alarm about a rise,
     ``−1`` about a fall, and ``0`` otherwise. After any alarm both statistics
     restart.
 
     Examples
     --------
     >>> two = TwoSided(0.05, threshold=3600.0)
-    >>> two.update(0.0, 1.0)
+    >>> two.record_check(0.0, 1.0)
     0
     """
 
@@ -394,10 +394,10 @@ class TwoSided:
         """Baseline of the fall detector, 1/s."""
         return self.down.lam0
 
-    def update(self, decision: float, dt: float) -> int:
+    def record_check(self, decision: float, dt: float) -> int:
         """Account for one check; returns +1 (rise), −1 (fall) or 0."""
-        up = self.up.update(decision, dt)
-        down = self.down.update(decision, dt)
+        up = self.up.record_check(decision, dt)
+        down = self.down.record_check(decision, dt)
         if up or down:
             self.up.reset()
             self.down.reset()

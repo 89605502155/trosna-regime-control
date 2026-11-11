@@ -21,7 +21,7 @@ def test_debiased_rate_is_exact_for_constant_expectation() -> None:
     p = -math.expm1(-lam * dt)
     est = ForgettingRate(tau=600.0)
     for _ in range(400):
-        est.update(p, dt)  # expectation of the decision bit, no randomness
+        est.record_check(p, dt)  # expectation of the decision bit, no randomness
     assert est.debiased == pytest.approx(lam, rel=1e-6)
     assert est.naive == pytest.approx(float(expected_naive_rate(lam, dt)), rel=1e-6)
 
@@ -30,8 +30,8 @@ def test_forgetting_follows_real_time() -> None:
     fast = ForgettingRate(tau=10.0)
     slow = ForgettingRate(tau=1000.0)
     for est in (fast, slow):
-        est.update(1.0, 1.0)
-        est.update(0.0, 100.0)
+        est.record_check(1.0, 1.0)
+        est.record_check(0.0, 100.0)
     assert fast.n_moves < slow.n_moves  # the old move is forgotten more quickly
 
 
@@ -45,7 +45,7 @@ def test_prior_and_empty_state() -> None:
 
 def test_state_roundtrip() -> None:
     est = ForgettingRate(tau=600.0)
-    est.update(1.0, 3.0)
+    est.record_check(1.0, 3.0)
     restored = ForgettingRate.from_dict(est.to_dict())
     assert restored.debiased == est.debiased
 
@@ -55,9 +55,9 @@ def test_validation() -> None:
         ForgettingRate(tau=0.0)
     est = ForgettingRate(tau=10.0)
     with pytest.raises(ValueError, match="dt"):
-        est.update(1.0, 0.0)
+        est.record_check(1.0, 0.0)
     with pytest.raises(ValueError, match="decision"):
-        est.update(2.0, 1.0)
+        est.record_check(2.0, 1.0)
 
 
 def test_relative_spread_example() -> None:

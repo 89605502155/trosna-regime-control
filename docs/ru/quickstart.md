@@ -15,7 +15,7 @@ from trosna_regime_control import ForgettingRate
 
 est = ForgettingRate(tau=1800.0)  # память около 30 минут
 for moved, dt in [(0, 10.0), (1, 8.2), (0, 6.4), (1, 4.6)]:
-    est.update(moved, dt)
+    est.record_check(moved, dt)
 print(f"наивная {est.naive:.4f} 1/с, с поправкой {est.debiased:.4f} 1/с")
 ```
 
@@ -43,7 +43,7 @@ print(round(float(rule_b(0.05, c1_over_c2=2.0)), 2))  # 8.94 с
 from trosna_regime_control import ShiryaevRoberts
 
 det = ShiryaevRoberts.for_arl(lam0=0.05, kappa=2.0, arl=3600.0)
-alarms = [det.update(decision, dt) for decision, dt in [(1, 5.0), (0, 5.0), (1, 5.0)]]
+alarms = [det.record_check(decision, dt) for decision, dt in [(1, 5.0), (0, 5.0), (1, 5.0)]]
 print(alarms, round(det.stat, 3))
 ```
 
@@ -60,7 +60,7 @@ t = 0.0
 due = ctrl.start(t)
 for moved in [False, True, False, False, True]:
     t += due  # в реальной системе: время только что выполненной проверки
-    step = ctrl.update(t, moved)
+    step = ctrl.record_decision(t, moved)
     due = step.next_dt
 print(f"следующая проверка через {step.next_dt:.2f} с, тревога {step.alarm}")
 ```

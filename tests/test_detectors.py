@@ -105,20 +105,20 @@ def test_online_detectors_match_paths_and_reset() -> None:
     path = sr_time_path(lr_factor(b, dt, LAM0, KAPPA)[None, :], dt[None, :])[0]
     det = ShiryaevRoberts(LAM0, KAPPA, threshold=math.inf, time_weighted=True)
     for k in range(300):
-        det.update(float(b[k]), float(dt[k]))
+        det.record_check(float(b[k]), float(dt[k]))
         assert det.stat == pytest.approx(path[k])
     small = ShiryaevRoberts(LAM0, KAPPA, threshold=1e-9)
-    assert small.update(1.0, 1.0)
+    assert small.record_check(1.0, 1.0)
     assert small.stat == 0.0
     cus = Cusum(LAM0, KAPPA, h=1e-9)
-    assert cus.update(1.0, 1.0)
+    assert cus.record_check(1.0, 1.0)
     assert cus.stat == 0.0
-    assert TwoSided(LAM0, threshold=1e9).update(0.0, 1.0) == 0
+    assert TwoSided(LAM0, threshold=1e9).record_check(0.0, 1.0) == 0
 
 
 def test_two_sided_reports_a_rise() -> None:
     rise = TwoSided(LAM0, threshold=1e-9)
-    assert rise.update(1.0, 1.0) == 1
+    assert rise.record_check(1.0, 1.0) == 1
     assert rise.up.stat == 0.0
     assert rise.down.stat == 0.0
 

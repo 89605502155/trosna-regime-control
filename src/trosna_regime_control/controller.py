@@ -7,9 +7,11 @@ returns the time of the next check and the regime. The loop is:
    takes the check with its real interval (idea 3);
 2. a two-sided time-weighted Shiryaev–Roberts detector compares the decisions
    with the baseline ``λ₀`` (idea 4). Its mean time to a false alarm is at least
-   ``arl_s`` seconds, under the Poisson model. After an alarm the baseline is
-   the fast estimate, the detector restarts, and the regime is non-stationary
-   for ``hold_s`` seconds;
+   ``arl_s`` seconds, under the Poisson model. The baseline is the upper (rise)
+   or lower (fall) confidence bound of the naive rate at the confidence level
+   ``confidence`` (default 0.95, one-sided). After an alarm the baseline is the
+   fast estimate, the detector restarts, and the regime is non-stationary for
+   ``hold_s`` seconds;
 3. in the stationary regime the interval is ``p*/λ̂`` (rule A) or the
    square-root law (rule B) (idea 2). In the non-stationary regime it is the
    smallest bound, so the system relearns quickly.
@@ -23,7 +25,7 @@ Examples
 >>> ctrl = RegimeController()
 >>> ctrl.start(0.0)
 10.0
->>> step = ctrl.update(10.0, decision=True)
+>>> step = ctrl.record_decision(10.0, decision=True)
 >>> step.nonstationary, step.alarm
 (False, None)
 """
@@ -32,15 +34,17 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Literal
 
 from .detectors import TwoSided
 from .intensity import ForgettingRate
 from .intervals import IntervalBounds, rule_a, rule_b
+from .normal import baseline_z, check_z, z_for_confidence
 from .scheduler import Step
+from .validation import validate_decision
 
-STATE_VERSION = 1
+STATE_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -71,10 +75,14 @@ class ControllerConfig:
         Memory of the fast estimate used as the new baseline after an alarm.
     min_rate : float
         Floor of the baseline, 1/s, so that the detector never divides by zero.
-    baseline_z : float
-        Standard deviations of the upper confidence bound used as the baseline
-        when the detector is armed (1.645: 95 %). A larger baseline is
-        conservative for the false-alarm guarantee.
+    confidence : float
+        One-sided confidence level of the baseline bounds, ``0.5 ≤ confidence < 1``.
+        The baseline is the upper bound (rise) or the lower bound (fall) of the
+        naive rate at this level. Default 0.95. A higher level gives a higher rise
+        baseline and a lower fall baseline, so fewer alarms.
+    z : float, optional
+        Standard deviations of the bounds, used directly. If given, it replaces
+        ``confidence`` (which is still checked). Non-negative and finite.
     prior_rate, prior_time_s : float, optional
         Prior of the rate estimate, 1/s and seconds of pseudo-data.
 
@@ -82,6 +90,8 @@ class ControllerConfig:
     --------
     >>> ControllerConfig(rule="B", c1_over_c2=1.5).rule
     'B'
+    >>> round(ControllerConfig(confidence=0.99).z_effective, 4)
+    2.3263
     """
 
     tau_s: float = 1800.0
@@ -96,7 +106,8 @@ class ControllerConfig:
     warmup_s: float = 600.0
     tau_fast_s: float = 300.0
     min_rate: float = 1e-4
-    baseline_z: float = 1.645
+    confidence: float = 0.95
+    z: float | None = None
     prior_rate: float | None = None
     prior_time_s: float = 0.0
 
@@ -126,30 +137,74 @@ class ControllerConfig:
         if self.min_rate <= 0.0:
             msg = "min_rate must be positive"
             raise ValueError(msg)
-        if self.baseline_z < 0.0:
-            msg = "baseline_z must be non-negative"
-            raise ValueError(msg)
+        z_for_confidence(self.confidence)  # raises for a level outside [0.5, 1)
+        if self.z is not None:
+            check_z(self.z)
+
+    @property
+    def z_effective(self) -> float:
+        """Standard deviations of the baseline bounds: ``z`` if given, else from ``confidence``."""
+        return baseline_z(self.confidence, self.z)
 
 
 class RegimeController:
-    """Streaming controller: ``start`` once, then ``update`` on every check.
+    """Streaming controller: ``start`` once, then ``record_decision`` on every check.
+
+    Parameters
+    ----------
+    config : ControllerConfig, optional
+        The parameters. Default: ``ControllerConfig()``.
+    confidence : float, optional
+        One-sided confidence level of the baseline bounds. If given, it replaces
+        ``config.confidence`` and ``config.z`` (the level is then the source of z).
+    z : float, optional
+        Standard deviations of the baseline bounds. If given, it replaces
+        ``config.confidence`` and ``config.z``. Cannot be combined with
+        ``confidence``.
 
     Attributes
     ----------
     config : ControllerConfig
-        The parameters.
+        The effective parameters, including the confidence level.
     n_checks : int
         Number of checks seen.
     n_alarms : int
         Number of detector alarms.
+
+    Raises
+    ------
+    ValueError
+        If both ``confidence`` and ``z`` are given, or a value is invalid.
+
+    Examples
+    --------
+    >>> ctrl = RegimeController(confidence=0.99)
+    >>> round(ctrl.config.z_effective, 4)
+    2.3263
     """
 
-    def __init__(self, config: ControllerConfig | None = None) -> None:
-        self.config = config if config is not None else ControllerConfig()
+    def __init__(
+        self,
+        config: ControllerConfig | None = None,
+        *,
+        confidence: float | None = None,
+        z: float | None = None,
+    ) -> None:
+        if confidence is not None and z is not None:
+            msg = "give either confidence or z, not both"
+            raise ValueError(msg)
+        base = config if config is not None else ControllerConfig()
+        if z is not None:
+            base = replace(base, z=z)
+        elif confidence is not None:
+            base = replace(base, confidence=confidence, z=None)
+        self.config = base
         self.est = ForgettingRate(
             self.config.tau_s,
             prior_rate=self.config.prior_rate,
             prior_time=self.config.prior_time_s,
+            confidence=self.config.confidence,
+            z=self.config.z,
         )
         self.fast = ForgettingRate(self.config.tau_fast_s)
         self.detector: TwoSided | None = None
@@ -181,59 +236,64 @@ class RegimeController:
         self.next_dt = self._plan(self.est.debiased)
         return self.next_dt
 
-    def update(self, t: float, decision: bool) -> Step:
-        """Account for the check at time ``t`` and return the plan for the next one.
+    def record_decision(self, t: float, decision: bool) -> Step:
+        """Record the check made at time ``t`` and return the plan for the next one.
 
         Parameters
         ----------
         t : float
-            Time of the check, seconds, after the previous check.
+            Time of the check, seconds, later than the previous check.
         decision : bool
-            True if memory was moved at this check.
+            True (or 1) if memory was moved at this check; False (or 0) if not.
+            See :func:`~trosna_regime_control.validation.validate_decision`.
+
+        Returns
+        -------
+        Step
+            Time and interval of the next check, the regime and any alarm.
 
         Raises
         ------
         RuntimeError
             If :meth:`start` was not called.
+        TypeError
+            If ``t`` or ``decision`` has a wrong type.
         ValueError
-            If ``t`` does not increase.
+            If ``t`` is NaN, infinite, negative or does not increase, or ``decision``
+            is an integer other than 0 or 1.
         """
         if not self.started:
-            msg = "call start() before update()"
+            msg = "call start() before record_decision()"
             raise RuntimeError(msg)
-        dt = float(t) - self.last_t
-        if dt <= 0.0:
-            msg = "check times must increase"
-            raise ValueError(msg)
-        bit = 1.0 if decision else 0.0
-        self.est.update(bit, dt)
-        self.fast.update(bit, dt)
+        time, moved = validate_decision(t, decision, last_t=self.last_t)
+        dt = time - self.last_t
+        bit = 1.0 if moved else 0.0
+        self.est.record_check(bit, dt)
+        self.fast.record_check(bit, dt)
         self.n_checks += 1
 
         alarm: str | None = None
-        if self.detector is None and self._armed(t):
-            armed = self.est.upper_naive(self.config.baseline_z)
+        if self.detector is None and self._armed(time):
+            armed = self.est.upper_naive()
             if math.isfinite(armed):
-                self.detector = self._make_detector(
-                    armed, self.est.lower_naive(self.config.baseline_z)
-                )
+                self.detector = self._make_detector(armed, self.est.lower_naive())
         if self.detector is not None:
-            verdict = self.detector.update(bit, dt)
+            verdict = self.detector.record_check(bit, dt)
             if verdict != 0:
                 alarm = "rise" if verdict > 0 else "fall"
                 self.n_alarms += 1
-                self.nonstationary_until = float(t) + self.config.hold_s
+                self.nonstationary_until = time + self.config.hold_s
                 fresh = self.fast.debiased
                 base = fresh if math.isfinite(fresh) else self.detector.lam0_up
                 self.detector = self._make_detector(base, base)
 
-        nonstationary = self.nonstationary_until is not None and t < self.nonstationary_until
+        nonstationary = self.nonstationary_until is not None and time < self.nonstationary_until
         rate = self.est.debiased
         next_dt = self.config.bounds.lo if nonstationary else self._plan(rate)
-        self.last_t = float(t)
+        self.last_t = time
         self.next_dt = next_dt
         return Step(
-            t_next=float(t) + next_dt,
+            t_next=time + next_dt,
             next_dt=next_dt,
             nonstationary=nonstationary,
             alarm=alarm,

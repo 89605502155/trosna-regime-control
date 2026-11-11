@@ -41,6 +41,17 @@ def _build_parser() -> argparse.ArgumentParser:
     a.add_argument("--p-star", type=float, default=0.3, help="target share of moves (rule A)")
     a.add_argument("--c1-over-c2", type=float, default=2.0, help="C1/C2 in seconds (rule B)")
     a.add_argument("--arl", type=float, default=3600.0, help="detector ARL, s")
+    a.add_argument(
+        "--confidence",
+        type=float,
+        default=0.95,
+        help="one-sided confidence of the detector baselines, in [0.5, 1) (default 0.95)",
+    )
+    a.add_argument(
+        "--z",
+        type=float,
+        help="standard deviations of the baselines; replaces --confidence",
+    )
     a.add_argument("--hold", type=float, default=300.0, help="non-stationary hold time, s")
     a.add_argument("--warmup", type=float, default=600.0, help="detector warm-up, s")
     a.add_argument("--heuristic", help="JSON file with the current heuristic table")
@@ -107,6 +118,8 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
         arl_s=args.arl,
         hold_s=args.hold,
         warmup_s=args.warmup,
+        confidence=args.confidence,
+        z=args.z,
     )
     rep = analyze(trace, cfg, _heuristic(args.heuristic), burn_in=args.burn_in)
     if args.json:

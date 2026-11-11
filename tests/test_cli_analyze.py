@@ -95,8 +95,16 @@ def test_version(capsys) -> None:
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
     assert exc.value.code == 0
-    assert "0.1.0" in capsys.readouterr().out
+    assert "0.0.1" in capsys.readouterr().out
 
 
 def test_trace_type_is_exported() -> None:
     assert Trace.__name__ == "Trace"
+
+
+def test_confidence_options(checks_csv, capsys):
+    assert main(["analyze", str(checks_csv), "--confidence", "0.99", "--json"]) == 0
+    assert main(["analyze", str(checks_csv), "--z", "1.0"]) == 0
+    capsys.readouterr()
+    assert main(["analyze", str(checks_csv), "--confidence", "1.2"]) == 2
+    assert "confidence" in capsys.readouterr().err

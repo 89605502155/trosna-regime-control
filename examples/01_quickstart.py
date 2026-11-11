@@ -14,7 +14,7 @@ from trosna_regime_control.scheduler import FixedInterval
 trace = simulate(FixedInterval(5.0), StepIntensity(0.05), horizon_s=40_000.0, seed=1)
 est = ForgettingRate(tau=1800.0)
 for bit, dt in zip(trace.decision, trace.dt, strict=True):
-    est.update(float(bit), float(dt))
+    est.record_check(float(bit), float(dt))
 print("true rate            0.05000 1/s")
 print(f"naive N/T            {est.naive:.5f} 1/s")
 print(f"debiased             {est.debiased:.5f} 1/s")
@@ -27,5 +27,5 @@ print(f"rule A interval      {float(rule_a(est.debiased, 0.3, bounds)):.2f} s")
 variable = simulate(UniformIntervals(1.0, 10.0, seed=2), StepIntensity(0.05), 40_000.0, seed=3)
 est2 = ForgettingRate(tau=1800.0)
 for bit, dt in zip(variable.decision, variable.dt, strict=True):
-    est2.update(float(bit), float(dt))
+    est2.record_check(float(bit), float(dt))
 print(f"variable intervals   {est2.debiased:.5f} 1/s (debiased)")

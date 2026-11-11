@@ -6,6 +6,40 @@ The current system writes one bit per check and sets the interval and the regime
 from the sum `S` of the last five bits. The migration keeps the same log, so
 the change can be made in three steps, each reversible.
 
+## Names and the baseline confidence (version 0.0.1)
+
+The first release is 0.0.1. Its streaming methods have the names below. No
+deprecated aliases are kept, because the earlier draft was never published.
+
+| Earlier draft | Release (0.0.1) |
+|---|---|
+| `RegimeController.update(t, decision)` | `record_decision(t, decision)` |
+| `Scheduler.update`, `FixedInterval.update`, `LegacyHeuristic.update`, `UniformIntervals.update` | `record_decision` |
+| `ForgettingRate.update(decision, dt)` | `record_check(decision, dt)` |
+| `ShiryaevRoberts.update`, `Cusum.update`, `TwoSided.update` | `record_check` |
+| `upper_naive(z)`, `lower_naive(z)` | `upper_naive()`, `lower_naive()`; `z` is set in the constructor |
+| `ControllerConfig(baseline_z=1.645)` | `confidence=0.95` (default, `z = 1.6449`), or `z=` |
+| `RegimeController(config)` | also `RegimeController(config, confidence=…)` or `z=…` |
+| state version 1 | state version 2: `z` in the estimator states, `confidence` and `z` in the config |
+
+A version 1 state cannot be restored. Start the controller again from the log
+(Step 2 replays it). The new `record_decision` refuses a float decision and a
+time that does not increase, with `TypeError` and `ValueError`.
+
+The default confidence replaces the old constant `z = 1.645`. The new `z` is
+`1.6449` at 95 %, so the baselines change by less than 0.05 %.
+
+To change the confidence:
+
+```python
+from trosna_regime_control import ControllerConfig, RegimeController
+
+strict = RegimeController(ControllerConfig(rule="A"), confidence=0.99)  # fewer alarms
+```
+
+On the command line: `trosna-regime-control analyze checks.csv --confidence 0.99`, or
+`--z 2.33` to give the standard deviations directly.
+
 ## Step 1. Measure the current system
 
 1. Set `is_real = true` in the heuristic configuration with the real table and
@@ -69,7 +103,7 @@ interval = controller.start(0.0)
 def on_check(now: float, moved: bool) -> float:
     """Return the interval to the next check."""
     global interval
-    step = controller.update(now, moved)
+    step = controller.record_decision(now, moved)
     interval = step.next_dt
     return interval
 ```

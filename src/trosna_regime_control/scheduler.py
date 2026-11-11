@@ -51,8 +51,8 @@ class Scheduler(Protocol):
         """Begin observation at ``t0``; return the first interval, seconds."""
         ...
 
-    def update(self, t: float, decision: bool) -> Step:
-        """Account for the check made at time ``t`` with decision ``decision``."""
+    def record_decision(self, t: float, decision: bool) -> Step:
+        """Record the check made at time ``t`` with decision ``decision``."""
         ...
 
 
@@ -65,7 +65,7 @@ class FixedInterval:
     >>> fixed = FixedInterval(4.0)
     >>> fixed.start(0.0)
     4.0
-    >>> fixed.update(4.0, True).next_dt
+    >>> fixed.record_decision(4.0, True).next_dt
     4.0
     """
 
@@ -82,7 +82,7 @@ class FixedInterval:
         del t0
         return self.dt
 
-    def update(self, t: float, decision: bool) -> Step:
+    def record_decision(self, t: float, decision: bool) -> Step:
         """Return the constant interval as the next step."""
         del decision
         return Step(
@@ -111,5 +111,6 @@ def replay(scheduler: Scheduler, trace: Trace) -> list[Step]:
     """
     scheduler.start(float(trace.t[0] - trace.dt[0]))
     return [
-        scheduler.update(float(t), bool(b)) for t, b in zip(trace.t, trace.decision, strict=True)
+        scheduler.record_decision(float(t), bool(b))
+        for t, b in zip(trace.t, trace.decision, strict=True)
     ]

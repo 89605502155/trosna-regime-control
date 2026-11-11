@@ -85,7 +85,7 @@ class UniformIntervals:
         self._next = self._draw()
         return self._next
 
-    def update(self, t: float, decision: bool) -> Step:
+    def record_decision(self, t: float, decision: bool) -> Step:
         """Draw the next interval; the decision is ignored."""
         del decision
         self._next = self._draw()
@@ -149,7 +149,7 @@ def simulate(
         move = needs > 0 or pending
         if carryover > 0.0:
             pending = move and bool(rng.random() < carryover)
-        step = scheduler.update(t_next, move)
+        step = scheduler.record_decision(t_next, move)
         times.append(t_next)
         dts.append(dt)
         bits.append(int(move))

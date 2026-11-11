@@ -27,11 +27,14 @@ sh scripts/install_hooks.sh
 
 ## Release
 
-1. Update the version in `pyproject.toml`, `src/trosna_regime_control/__init__.py`,
-   `CITATION.cff` and `CHANGELOG.md`.
-2. Commit, then tag `vX.Y.Z` and push the tag.
-3. The workflow `.github/workflows/publish.yml` builds the package and publishes
-   it to PyPI with trusted publishing, so no API token is stored.
+The package is published to PyPI by hand. The repository has no automated
+publishing workflow, and no API token is stored in it.
 
-The CI workflow `ci.yml` runs lint, the commit-message check, the tests on
-Python 3.11–3.14 and the build on each push and pull request.
+1. Update the version in `pyproject.toml`, `CITATION.cff` and `CHANGELOG.md`.
+   `trosna_regime_control.__version__` is read from the installed package metadata.
+2. Run the local checks above, then `uv build`.
+3. Upload with your own token: `uv publish --token <PyPI token>`. Do not commit the token.
+4. Commit, then tag the release commit and push it:
+   `git tag v0.0.1` and `git push origin main --tags`.
+
+The repository is `https://github.com/89605502155/trosna-regime-control`.

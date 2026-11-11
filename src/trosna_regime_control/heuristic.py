@@ -135,7 +135,7 @@ class LegacyHeuristic:
     >>> legacy = LegacyHeuristic()
     >>> legacy.start(0.0)
     10.0
-    >>> legacy.update(10.0, True).next_dt
+    >>> legacy.record_decision(10.0, True).next_dt
     8.2
     """
 
@@ -153,7 +153,7 @@ class LegacyHeuristic:
         del t0
         return self.config.interval(self.s_sum)
 
-    def update(self, t: float, decision: bool) -> Step:
+    def record_decision(self, t: float, decision: bool) -> Step:
         """Shift the decision into the window and return the table interval."""
         mask = 2**self.config.n_bits - 1
         self.history = ((self.history << 1) | int(decision)) & mask

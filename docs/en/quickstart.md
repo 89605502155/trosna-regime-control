@@ -15,7 +15,7 @@ from trosna_regime_control import ForgettingRate
 
 est = ForgettingRate(tau=1800.0)  # memory of about 30 minutes
 for moved, dt in [(0, 10.0), (1, 8.2), (0, 6.4), (1, 4.6)]:
-    est.update(moved, dt)
+    est.record_check(moved, dt)
 print(f"naive {est.naive:.4f} 1/s, debiased {est.debiased:.4f} 1/s")
 ```
 
@@ -43,15 +43,14 @@ false alarm, in seconds. The statistic uses the real intervals.
 from trosna_regime_control import ShiryaevRoberts
 
 det = ShiryaevRoberts.for_arl(lam0=0.05, kappa=2.0, arl=3600.0)
-alarms = [det.update(decision, dt) for decision, dt in [(1, 5.0), (0, 5.0), (1, 5.0)]]
+alarms = [det.record_check(decision, dt) for decision, dt in [(1, 5.0), (0, 5.0), (1, 5.0)]]
 print(alarms, round(det.stat, 3))
 ```
 
 ## 4. The whole loop: the streaming controller
 
 `RegimeController` combines the estimate, the detector and the rule. It is
-started once and then updated on every check. It returns the next interval and
-the regime.
+started once and then fed every check. It returns the next interval and the regime.
 
 ```python
 from trosna_regime_control import ControllerConfig, RegimeController
@@ -61,7 +60,7 @@ t = 0.0
 due = ctrl.start(t)
 for moved in [False, True, False, False, True]:
     t += due  # in a real system: the time of the check that has just been made
-    step = ctrl.update(t, moved)
+    step = ctrl.record_decision(t, moved)
     due = step.next_dt
 print(f"next check in {step.next_dt:.2f} s, alarm {step.alarm}")
 ```

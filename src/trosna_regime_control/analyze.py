@@ -119,7 +119,7 @@ def analyze(
     legacy = legacy_config if legacy_config is not None else default_config()
     est = ForgettingRate(cfg.tau_s)
     for b, dt in zip(trace.decision, trace.dt, strict=True):
-        est.update(float(b), float(dt))
+        est.record_check(float(b), float(dt))
 
     fit: CloglogFit | None
     try:

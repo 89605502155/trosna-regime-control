@@ -6,6 +6,40 @@
 последних пяти битов. Переход сохраняет тот же журнал, поэтому его можно сделать
 в три шага, и каждый шаг обратим.
 
+## Имена и уровень доверия базовых уровней (версия 0.0.1)
+
+Первый выпуск — версия 0.0.1. Потоковые методы называются так, как показано ниже.
+Устаревших синонимов нет: черновик не публиковался.
+
+| Черновик | Выпуск (0.0.1) |
+|---|---|
+| `RegimeController.update(t, decision)` | `record_decision(t, decision)` |
+| `Scheduler.update`, `FixedInterval.update`, `LegacyHeuristic.update`, `UniformIntervals.update` | `record_decision` |
+| `ForgettingRate.update(decision, dt)` | `record_check(decision, dt)` |
+| `ShiryaevRoberts.update`, `Cusum.update`, `TwoSided.update` | `record_check` |
+| `upper_naive(z)`, `lower_naive(z)` | `upper_naive()`, `lower_naive()`; `z` задаётся в конструкторе |
+| `ControllerConfig(baseline_z=1.645)` | `confidence=0.95` (по умолчанию, `z = 1,6449`), или `z=` |
+| `RegimeController(config)` | также `RegimeController(config, confidence=…)` или `z=…` |
+| состояние версии 1 | состояние версии 2: `z` в состоянии оценки, `confidence` и `z` в настройках |
+
+Состояние версии 1 не восстанавливается. Контроллер запускают заново и прогоняют
+журнал (шаг 2). Новый `record_decision` не принимает дробное решение и время, которое
+не растёт: это `TypeError` и `ValueError`.
+
+Уровень по умолчанию заменяет прежнюю константу `z = 1,645`. Новое `z` при 95 %
+равно `1,6449`, базовые уровни меняются меньше чем на 0,05 %.
+
+Чтобы изменить уровень:
+
+```python
+from trosna_regime_control import ControllerConfig, RegimeController
+
+strict = RegimeController(ControllerConfig(rule="A"), confidence=0.99)  # меньше тревог
+```
+
+В командной строке: `trosna-regime-control analyze checks.csv --confidence 0.99`, либо
+`--z 2.33`, чтобы задать число стандартных отклонений напрямую.
+
 ## Шаг 1. Измерить текущую систему
 
 1. Задать в файле настроек эвристики реальные таблицу и порог, поставить
@@ -72,7 +106,7 @@ interval = controller.start(0.0)
 def on_check(now: float, moved: bool) -> float:
     """Вернуть интервал до следующей проверки."""
     global interval
-    step = controller.update(now, moved)
+    step = controller.record_decision(now, moved)
     interval = step.next_dt
     return interval
 ```

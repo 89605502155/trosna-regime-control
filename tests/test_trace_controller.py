@@ -59,7 +59,7 @@ def test_trace_validation() -> None:
 
 def test_controller_needs_start() -> None:
     with pytest.raises(RuntimeError, match="start"):
-        RegimeController().update(1.0, True)
+        RegimeController().record_decision(1.0, True)
 
 
 def test_controller_stationary_uses_rule_a() -> None:
@@ -68,7 +68,7 @@ def test_controller_stationary_uses_rule_a() -> None:
     t = 0.0
     for _ in range(200):
         t += 5.0
-        step = ctrl.update(t, decision=(int(t) % 3 == 0))
+        step = ctrl.record_decision(t, decision=(int(t) % 3 == 0))
     assert not step.nonstationary
     assert step.alarm is None
     assert step.next_dt == pytest.approx(min(max(0.3 / step.rate, 1.0), 10.0))
@@ -77,16 +77,16 @@ def test_controller_stationary_uses_rule_a() -> None:
 def test_controller_rule_b_runs() -> None:
     ctrl = RegimeController(ControllerConfig(rule="B", c1_over_c2=2.0, warmup_s=1e9))
     ctrl.start(0.0)
-    step = ctrl.update(4.0, decision=True)
+    step = ctrl.record_decision(4.0, decision=True)
     assert 1.0 <= step.next_dt <= 10.0
 
 
 def test_controller_rejects_non_increasing_time() -> None:
     ctrl = RegimeController()
     ctrl.start(0.0)
-    ctrl.update(5.0, False)
+    ctrl.record_decision(5.0, False)
     with pytest.raises(ValueError, match="increase"):
-        ctrl.update(5.0, False)
+        ctrl.record_decision(5.0, False)
 
 
 def test_controller_detects_a_rise_and_relaxes_interval() -> None:
@@ -111,12 +111,12 @@ def test_controller_state_roundtrip_continues_identically() -> None:
     ctrl = RegimeController(cfg)
     ctrl.start(0.0)
     for k in range(half):
-        ctrl.update(float(tr.t[k]), bool(tr.decision[k]))
+        ctrl.record_decision(float(tr.t[k]), bool(tr.decision[k]))
     restored = RegimeController.from_json(ctrl.to_json())
     assert json.loads(restored.to_json()) == json.loads(ctrl.to_json())
     for k in range(half, len(tr)):
-        a = restored.update(float(tr.t[k]), bool(tr.decision[k]))
-        b = ctrl.update(float(tr.t[k]), bool(tr.decision[k]))
+        a = restored.record_decision(float(tr.t[k]), bool(tr.decision[k]))
+        b = ctrl.record_decision(float(tr.t[k]), bool(tr.decision[k]))
         assert a.next_dt == pytest.approx(b.next_dt)
         assert a.alarm == b.alarm
         assert a.nonstationary == b.nonstationary
@@ -134,7 +134,7 @@ def test_bounds_come_from_config() -> None:
     cfg = ControllerConfig(bounds=IntervalBounds(lo=2.0, hi=4.0), warmup_s=1e9)
     ctrl = RegimeController(cfg)
     assert ctrl.start(0.0) == pytest.approx(4.0)
-    assert ctrl.update(4.0, True).next_dt >= 2.0
+    assert ctrl.record_decision(4.0, True).next_dt >= 2.0
 
 
 def test_legacy_and_fixed_schedulers_in_simulation() -> None:

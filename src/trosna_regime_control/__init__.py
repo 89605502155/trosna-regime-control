@@ -44,6 +44,7 @@ from .heuristic import (
 )
 from .intensity import ForgettingRate, naive_bias
 from .intervals import IntervalBounds, exact_interval, rule_a, rule_b, rule_c
+from .normal import norm_ppf, z_for_confidence
 from .regression import CloglogFit, Coefficient, fit_cloglog, ones_share_by_interval
 from .scheduler import FixedInterval, Scheduler, Step, replay
 from .simplex import Allocation, Reallocation, aitchison_distance, allocate, clr, clr_inv, perturb
@@ -51,8 +52,9 @@ from .simplex import closure as closure_shares
 from .simplex import plan as plan_reallocation
 from .synthetic import StepIntensity, UniformIntervals, simulate
 from .trace import Trace, read_checks
+from .validation import validate_decision
 
-__version__ = "0.1.0"
+__version__ = "0.0.1"
 
 __all__ = [
     "DEFAULT_TABLE",
@@ -91,6 +93,7 @@ __all__ = [
     "load_heuristic_config",
     "lr_factor",
     "naive_bias",
+    "norm_ppf",
     "ones_share_by_interval",
     "perturb",
     "plan_reallocation",
@@ -102,5 +105,7 @@ __all__ = [
     "run_lengths",
     "simulate",
     "switches_per_hour",
+    "validate_decision",
     "window_sums",
+    "z_for_confidence",
 ]

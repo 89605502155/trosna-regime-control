@@ -32,6 +32,8 @@ the summary:
 | `--p-star` | 0.3 | target share of moves for rule A |
 | `--c1-over-c2` | 2.0 | ratio of costs for rule B, s |
 | `--arl` | 3600 | mean time to a false alarm of the detector, s |
+| `--confidence` | 0.95 | one-sided confidence of the detector baselines, in `[0.5, 1)` |
+| `--z` | — | standard deviations of the baselines; replaces `--confidence` |
 | `--hold` | 300 | time the non-stationary regime lasts after an alarm, s |
 | `--warmup` | 600 | observation time before the detector is armed, s |
 | `--heuristic` | built-in | JSON file with the table of the current heuristic |

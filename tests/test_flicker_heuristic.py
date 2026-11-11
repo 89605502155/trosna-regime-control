@@ -42,7 +42,7 @@ def test_window_sums() -> None:
 def test_legacy_scheduler_follows_table() -> None:
     legacy = LegacyHeuristic()
     assert legacy.start(0.0) == DEFAULT_TABLE[0]
-    step = legacy.update(10.0, True)
+    step = legacy.record_decision(10.0, True)
     assert step.next_dt == DEFAULT_TABLE[1]
     assert step.t_next == pytest.approx(10.0 + DEFAULT_TABLE[1])
 

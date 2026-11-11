@@ -5,7 +5,7 @@ lines (starting with '#') and without surrounding whitespace. Characters are
 counted as Unicode code points.
 
 Usage: check_commit_msg.py FILE           (commit-msg hook)
-       check_commit_msg.py --rev RANGE    (CI, e.g. base..HEAD)
+       check_commit_msg.py --rev RANGE    (e.g. base..HEAD)
 """
 
 from __future__ import annotations

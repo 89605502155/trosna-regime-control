@@ -110,7 +110,11 @@ Three remarks keep the guarantee honest.
    of the previous bit near 0. A carry-over of 0.4 fails the check.
 2. **The baseline `λ₀`.** It is estimated from the same data, so the guarantee
    is approximate. The controller takes the upper confidence bound `λ₀⁺` for
-   the rise detector and the lower bound `λ₀⁻` for the fall detector. For the
+   the rise detector and the lower bound `λ₀⁻` for the fall detector. The bounds
+   are one-sided, at the level `confidence` (default 0.95), or at `z` standard
+   deviations if `z` is given. A higher level gives a higher `λ₀⁺`, a lower
+   `λ₀⁻` and fewer alarms. The level is a parameter of the controller and of
+   `ForgettingRate`, not a constant. For the
    rise the null is `λ ≤ λ₀`, for the fall it is `λ ≥ λ₀`, and the expected
    factor respects both (checked numerically).
 3. **Speed.** The Lorden bound `ln(ARL)/I` is asymptotic. At moderate ARL the
@@ -121,8 +125,8 @@ Three remarks keep the guarantee honest.
 
 `RegimeController` takes a check `(t, b)` and does this:
 
-1. It updates `λ̂` with the real interval `Δt = t − t_prev`.
-2. It updates the detectors. After an alarm the regime is non-stationary for
+1. It records the check: it updates `λ̂` with the real interval `Δt = t − t_prev`.
+2. It records the check in the detectors. After an alarm the regime is non-stationary for
    `hold_s`, the interval is the lower bound (1 s), and the baselines are reset
    to the fast estimate.
 3. In the stationary regime the interval comes from rule A or rule B.
