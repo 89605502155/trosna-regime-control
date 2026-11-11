@@ -1,0 +1,148 @@
+[project]
+name = "trosna-regime-control"
+version = "0.1.0"
+description = "Regime detection from reallocation decisions under irregular checks, scale-invariant monitoring intervals and simplex (Aitchison) memory allocation for adaptive KVM memory management"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Andrey Ferubko", email = "ferubko1999@yandex.ru" },
+]
+requires-python = ">=3.11"
+keywords = [
+    "kvm",
+    "memory-management",
+    "ballooning",
+    "change-point-detection",
+    "shiryaev-roberts",
+    "cusum",
+    "compositional-data",
+    "aitchison",
+    "perturbation-group",
+    "martingale",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: System :: Monitoring",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+plot = [
+    "matplotlib>=3.8",
+]
+
+[project.scripts]
+trosna-regime-control = "trosna_regime_control.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/89605502155/trosna-regime-control"
+Documentation = "https://github.com/89605502155/trosna-regime-control/tree/main/docs"
+Repository = "https://github.com/89605502155/trosna-regime-control"
+Issues = "https://github.com/89605502155/trosna-regime-control/issues"
+Changelog = "https://github.com/89605502155/trosna-regime-control/blob/main/CHANGELOG.md"
+
+[build-system]
+requires = ["uv_build>=0.11.9,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "ruff>=0.16.10",
+]
+
+[tool.uv.build-backend]
+# The source distribution also carries the tests, documentation and examples.
+source-include = [
+    "tests/**",
+    "docs/**",
+    "examples/**",
+    "scripts/**",
+    "README.ru.md",
+    "CHANGELOG.md",
+    "CITATION.cff",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W", "F", "I", "N", "D", "UP", "B", "A", "C4", "EM", "ISC", "PIE", "PT", "RET",
+    "SIM", "TID", "ARG", "PTH", "PGH", "T20", "PERF", "FURB", "NPY", "PL", "RUF", "S",
+]
+ignore = [
+    "PLR0911", # too many return statements
+    "PLR0912", # too many branches
+    "PLR0913", # too many arguments: the API mirrors the notation of the document
+    "PLR0917", # too many positional arguments: the same
+    "PLR0915", # too many statements
+    "PLR2004", # magic values: the constants are those of the document and the testbed
+    "PLC0415", # imports inside functions keep optional dependencies optional
+]
+# Greek letters and mathematical signs in docstrings are formulas, not typos.
+allowed-confusables = ["λ", "κ", "τ", "δ", "η", "θ", "α", "β", "π", "σ", "ν", "−", "–", "×", "ℓ", "₀", "₁"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "D", "S101", "PLR2004", "PLR0917", "T20", "N802", "N803", "N806", "PERF", "PT011", "ARG001",
+    "RUF001", "RUF002", "RUF003",  # Cyrillic and Greek text of the document in the tests
+]
+"examples/**" = ["D", "T20", "S101", "INP001"]
+"experiments/**" = ["D", "T20", "INP001", "ARG001", "PLW2901", "S311"]  # heavy scripts, not run in CI
+"scripts/**" = ["D", "T20", "INP001", "S603", "S607", "PTH123"]  # git calls
+"src/trosna_regime_control/cli.py" = ["T20"]  # the command-line tool prints its report
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.ruff.lint.isort]
+known-first-party = ["trosna_regime_control"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "src"]
+pythonpath = ["tests"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--doctest-modules",
+    "--import-mode=importlib",
+    "-m",
+    "not slow",
+]
+doctest_optionflags = ["NORMALIZE_WHITESPACE", "ELLIPSIS", "NUMBER"]
+markers = [
+    "slow: Monte Carlo runs of the detectors; run with -m slow",
+]
+filterwarnings = [
+    "error",
+]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src/trosna_regime_control"]
+strict = true
+warn_unreachable = true
