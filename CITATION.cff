@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "trosna-regime-control: regime detection from reallocation decisions, scale-invariant monitoring and simplex memory allocation for adaptive KVM"
+abstract: >-
+  A Python library for the methods of the article on Lie groups and martingales
+  in adaptive KVM memory management: memory shares on the simplex with
+  clr coordinates, bounds and a dead band; monitoring intervals by scale-invariant
+  rules; real-time decision intensity with exponential forgetting; Shiryaev–Roberts
+  and CUSUM detectors on Bernoulli decisions at irregular intervals with an ARL
+  bound; the exact flicker of the 5-bit heuristic; a streaming regime controller
+  and a command-line tool.
+version: 0.1.0
+date-released: 2026-11-11
+license: MIT
+repository-code: "https://github.com/89605502155/trosna-regime-control"
+url: "https://github.com/89605502155/trosna-regime-control"
+keywords:
+  - memory management
+  - KVM
+  - ballooning
+  - change-point detection
+  - Shiryaev-Roberts procedure
+  - CUSUM
+  - compositional data
+  - Aitchison geometry
+  - martingale
+authors:
+  - family-names: Ferubko
+    given-names: Andrey
+    email: ferubko1999@yandex.ru
+    affiliation: "Bryansk State Engineering-Technological University (BGITU)"
