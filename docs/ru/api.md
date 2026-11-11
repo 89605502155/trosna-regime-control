@@ -58,6 +58,11 @@ print(round(exact_interval(0.05, 2.0), 2))
 * `to_dict()`, `from_dict(data)`: состояние для хранения.
 
 `naive_bias(rate, dt)` даёт относительное смещение наивной оценки.
+`estimate(estimator)` возвращает оценку по имени: `naive` или `debiased`.
+
+`steady_state_share(p_star, formula, estimator, scale)` возвращает `(доля, λΔt)` —
+аналитический стационарный режим правила А при постоянной интенсивности для одного
+из четырёх сочетаний.
 
 ## Детекторы (идея 4)
 
@@ -106,6 +111,8 @@ print(round(flicker_stats(0.05).switches_per_hour, 1))
 `warmup_s`, `tau_fast_s`, `min_rate`, `confidence` (по умолчанию 0,95), `z`
 (по умолчанию `None`), `prior_rate`, `prior_time_s`. Описание каждого поля — в докстринге.
 `z_effective` — число стандартных отклонений, которое используется.
+`estimator` (`"debiased"` по умолчанию или `"naive"`) выбирает оценку интенсивности
+для правила интервала; `formula` и `estimator` дают четыре сочетания.
 
 `RegimeController(config=None, *, confidence=None, z=None)`. Именованные аргументы
 заменяют уровень доверия из `config` (задайте один из них, не оба):

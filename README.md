@@ -16,7 +16,8 @@ of bits into the three things the manager needs:
   works with irregular, policy-dependent intervals;
 * **the next interval**: from a real-time estimate of the decision intensity
   with exponential forgetting, by the scale-invariant rules `Δt = −ln(1 − p*)/λ̂`
-  (or `p*/λ̂`, the linear form) and `Δt = √(2C₁/(λ̂C₂))`, not by a hand-made table;
+  (or `p*/λ̂`, the linear form; `λ̂` is the debiased rate, or the naive `N/T` with
+  `estimator="naive"`) and `Δt = √(2C₁/(λ̂C₂))`, not by a hand-made table;
 * **the allocation**: memory shares as points of the simplex, perturbed in the
   clr coordinates, with minimum and maximum bounds and a dead band δ against
   needless reallocations.

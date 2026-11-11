@@ -53,6 +53,8 @@ quantities and a cost model.
   exact interval is about 19 % longer. The option `formula="linear"` selects it,
   and `scale` multiplies the interval. With the naive estimate `N/T` the share of
   moves is about 0.36 in steady state, not `p*`; the linear form keeps it at `p*`.
+  The option `estimator="naive"` selects `N/T`; the default is the debiased
+  estimate, which pairs with the exact form (see the section on combinations).
 * **Rule B**: `Δt = √(2 C₁ / (λ̂ C₂))`. It minimises the cost rate
   `J(Δt) = C₁/Δt + λC₂Δt/2`, where `C₁` is the cost of a check and `C₂` the
   cost of a second of delay. Only the ratio `C₁/C₂` matters. The exact
@@ -62,6 +64,48 @@ quantities and a cost model.
   distance.
 
 All rules are clipped to `[1 s, 10 s]`, as the current table is.
+
+## Rule A: four combinations of formula and estimator
+
+The rule has two choices. The formula is `exact` (`g = −ln(1 − p*)`, default) or
+`linear` (`g = p*`). The rate estimate is `debiased` (default) or `naive` (`N/T`).
+The estimator is set with `estimator` in `ControllerConfig`, `RegimeController`
+and `analyze --estimator`. At a constant true rate `λ` and interval `Δt = g/λ̂`,
+the steady state is (`q` is the share of moves, `G = scale · g(p*)`):
+
+| combination | share `q` | `λΔt` |
+|---|---|---|
+| exact, debiased (default) | `p*` | `−ln(1 − p*)` |
+| linear, naive | `p*` | `−ln(1 − p*)` |
+| exact, naive | `−ln(1 − p*)` | `−ln(1 − G)` |
+| linear, debiased | `1 − e^{−p*}` | `p*` |
+
+The first two pairs hit the target `p*`. Function `steady_state_share` returns
+these values. The table below compares them with simulation on the
+`compare_rule_a.py --quick` configuration: rate `λ = 0.05 1/s`, horizon
+40 000 s, burn-in 5 memory times (`τ = 1800 s`), detector off, bounds 0.01–1000 s,
+development seeds 1 and 2, held-out seeds 101 and 102. The full grid is heavy and
+not run.
+
+| formula | estimator | p* | share, analytic | share, dev seeds | share, held-out | max abs(share − p*) | λΔt, analytic | λΔt, sim | checks/run |
+|---|---|---|---|---|---|---|---|---|---|
+| exact | naive | 0.10 | 0.1054 | 0.1055 | 0.1046 | 0.0056 | 0.1113 | 0.1112 | 16760 |
+| exact | naive | 0.30 | 0.3567 | 0.3590 | 0.3583 | 0.0604 | 0.4411 | 0.4373 | 4047 |
+| exact | naive | 0.50 | 0.6931 | 0.7311 | 0.7268 | 0.2351 | 1.1814 | 1.4061 | 1139 |
+| exact | debiased | 0.10 | 0.1000 | 0.1003 | 0.0993 | 0.0012 | 0.1054 | 0.1052 | 17950 |
+| exact | debiased | 0.30 | 0.3000 | 0.2975 | 0.3010 | 0.0026 | 0.3567 | 0.3472 | 5390 |
+| exact | debiased | 0.50 | 0.5000 | 0.5017 | 0.5026 | 0.0038 | 0.6931 | 0.6919 | 2680 |
+| linear | naive | 0.10 | 0.1000 | 0.1001 | 0.0995 | 0.0007 | 0.1054 | 0.1051 | 17781 |
+| linear | naive | 0.30 | 0.3000 | 0.3018 | 0.3008 | 0.0031 | 0.3567 | 0.3481 | 5114 |
+| linear | naive | 0.50 | 0.5000 | 0.5081 | 0.5077 | 0.0103 | 0.6931 | 0.7051 | 2381 |
+| linear | debiased | 0.10 | 0.0952 | 0.0949 | 0.0952 | 0.0057 | 0.1000 | 0.0996 | 18963 |
+| linear | debiased | 0.30 | 0.2592 | 0.2586 | 0.2593 | 0.0423 | 0.3000 | 0.2916 | 6413 |
+| linear | debiased | 0.50 | 0.3935 | 0.3936 | 0.3942 | 0.1071 | 0.5000 | 0.4919 | 3766 |
+
+The two pairs that hit `p*` agree within 0.01 in this configuration. The naive
+estimate overshoots the share with the exact formula. The debiased estimate
+undershoots it with the linear formula. `λΔt` is the mean over the checks
+after burn-in, so small differences from the analytic value are expected.
 
 ## Idea 3. Decision intensity with forgetting in real time
 

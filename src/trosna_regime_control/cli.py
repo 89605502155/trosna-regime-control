@@ -51,6 +51,12 @@ def _build_parser() -> argparse.ArgumentParser:
         help="rule A: exact -ln(1-p*)/rate (default) or linear p*/rate",
     )
     a.add_argument(
+        "--estimator",
+        choices=("naive", "debiased"),
+        default="debiased",
+        help="rate for the rule: debiased -ln(1-N/K)/(T/K) (default) or naive N/T",
+    )
+    a.add_argument(
         "--scale",
         type=float,
         default=1.0,
@@ -132,6 +138,7 @@ def _cmd_analyze(args: argparse.Namespace) -> int:
         p_star=args.p_star,
         formula=args.formula,
         scale=args.scale,
+        estimator=args.estimator,
         c1_over_c2=args.c1_over_c2,
         bounds=IntervalBounds(),
         arl_s=args.arl,

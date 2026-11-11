@@ -14,8 +14,9 @@ returns the time of the next check and the regime. The loop is:
    ``hold_s`` seconds;
 3. in the stationary regime the interval is ``−ln(1 − p*)/λ̂`` (rule A, exact
    formula by default; ``p*/λ̂`` with ``formula="linear"``) or the
-   square-root law (rule B) (idea 2). In the non-stationary regime it is the
-   smallest bound, so the system relearns quickly.
+   square-root law (rule B) (idea 2). The rate ``λ̂`` is the debiased estimate by
+   default, or the naive ``N/T`` with ``estimator="naive"``. In the non-stationary
+   regime the interval is the smallest bound, so the system relearns quickly.
 
 The state is a plain dictionary; :meth:`RegimeController.to_json` and
 :meth:`RegimeController.from_json` save and restore it, so that a daemon can
@@ -39,7 +40,7 @@ from dataclasses import asdict, dataclass, field, replace
 from typing import Any, Literal
 
 from .detectors import TwoSided
-from .intensity import ForgettingRate
+from .intensity import ForgettingRate, check_estimator
 from .intervals import IntervalBounds, check_rule_a, rule_a, rule_b
 from .normal import baseline_z, check_z, z_for_confidence
 from .scheduler import Step
@@ -65,6 +66,12 @@ class ControllerConfig:
         ``"linear"`` gives ``Δt = p*/λ̂``. Ignored by rule B.
     scale : float
         Positive multiplier of the rule A interval. Default 1. Ignored by rule B.
+    estimator : {"naive", "debiased"}
+        Rate ``λ̂`` used by the interval rule and by the re-baseline after an alarm:
+        ``"naive"`` is ``N/T``, ``"debiased"`` is ``−ln(1 − N/K)/(T/K)`` (default).
+        The pair ``("exact", "debiased")`` gives the steady share ``p*``, see
+        :func:`~trosna_regime_control.intervals.steady_state_share`. The detector
+        baselines always use the count bounds of the naive rate.
     c1_over_c2 : float
         Ratio of the cost of a check to the cost of a second of delay, s (rule B).
     bounds : IntervalBounds
@@ -118,6 +125,7 @@ class ControllerConfig:
     prior_time_s: float = 0.0
     formula: Literal["exact", "linear"] = "exact"
     scale: float = 1.0
+    estimator: Literal["naive", "debiased"] = "debiased"
 
     def __post_init__(self) -> None:
         """Check the parameters."""
@@ -128,6 +136,7 @@ class ControllerConfig:
             msg = "memory times must be positive"
             raise ValueError(msg)
         check_rule_a(self.p_star, self.formula, self.scale)
+        check_estimator(self.estimator)
         if self.c1_over_c2 <= 0.0:
             msg = "c1_over_c2 must be positive"
             raise ValueError(msg)
@@ -224,8 +233,8 @@ class RegimeController:
 
     @property
     def rate(self) -> float:
-        """Debiased intensity estimate, 1/s (NaN before data)."""
-        return self.est.debiased
+        """Intensity estimate used by the rule, 1/s: ``config.estimator`` (NaN before data)."""
+        return self.est.estimate(self.config.estimator)
 
     @property
     def baselines(self) -> tuple[float, float] | None:
@@ -239,7 +248,7 @@ class RegimeController:
         self.t_start = float(t0)
         self.last_t = float(t0)
         self.started = True
-        self.next_dt = self._plan(self.est.debiased)
+        self.next_dt = self._plan(self.rate)
         return self.next_dt
 
     def record_decision(self, t: float, decision: bool) -> Step:
@@ -289,12 +298,12 @@ class RegimeController:
                 alarm = "rise" if verdict > 0 else "fall"
                 self.n_alarms += 1
                 self.nonstationary_until = time + self.config.hold_s
-                fresh = self.fast.debiased
+                fresh = self.fast.estimate(self.config.estimator)
                 base = fresh if math.isfinite(fresh) else self.detector.lam0_up
                 self.detector = self._make_detector(base, base)
 
         nonstationary = self.nonstationary_until is not None and time < self.nonstationary_until
-        rate = self.est.debiased
+        rate = self.rate
         next_dt = self.config.bounds.lo if nonstationary else self._plan(rate)
         self.last_t = time
         self.next_dt = next_dt
@@ -372,9 +381,11 @@ class RegimeController:
             raise ValueError(msg)
         cfg_data = dict(data["config"])
         # States saved before the fields `formula` and `scale` existed used the
-        # linear rule A with scale 1. Restoring them keeps that behaviour.
+        # linear rule A with scale 1. States saved before `estimator` used the
+        # debiased rate. Restoring them keeps that behaviour.
         cfg_data.setdefault("formula", "linear")
         cfg_data.setdefault("scale", 1.0)
+        cfg_data.setdefault("estimator", "debiased")
         cfg_data["bounds"] = IntervalBounds(**cfg_data["bounds"])
         ctrl = cls(ControllerConfig(**cfg_data))
         ctrl.started = bool(data["started"])

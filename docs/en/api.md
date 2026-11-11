@@ -60,6 +60,11 @@ has:
 * `to_dict()`, `from_dict(data)`: state for storage.
 
 `naive_bias(rate, dt)` gives the relative bias of the naive estimate.
+`estimate(estimator)` returns `naive` or `debiased` by name; the controller uses it
+with `ControllerConfig.estimator`.
+
+`steady_state_share(p_star, formula, estimator, scale)` returns `(share, λΔt)`, the
+analytic steady state of rule A at a constant rate for one of the four combinations.
 
 ## Detectors (idea 4)
 
@@ -104,7 +109,7 @@ print(round(flicker_stats(0.05).switches_per_hour, 1))
 ## Controller
 
 `ControllerConfig` has the fields `tau_s`, `rule` (`"A"` or `"B"`), `p_star`,
-`formula` (`"exact"` by default, or `"linear"`), `scale` (1.0), `c1_over_c2`, `bounds`, `arl_s`, `kappa_up`, `kappa_down`, `hold_s`,
+`formula` (`"exact"` by default, or `"linear"`), `scale` (1.0), `estimator` (`"debiased"` by default, or `"naive"`), `c1_over_c2`, `bounds`, `arl_s`, `kappa_up`, `kappa_down`, `hold_s`,
 `warmup_s`, `tau_fast_s`, `min_rate`, `confidence` (default 0.95), `z`
 (default `None`), `prior_rate`, `prior_time_s`. `formula` and `scale` act on rule A only.
 See the docstring of each field.

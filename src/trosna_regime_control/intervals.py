@@ -30,6 +30,7 @@ import numpy as np
 import numpy.typing as npt
 
 from ._types import FloatArray
+from .intensity import check_estimator
 
 
 @dataclass(frozen=True)
@@ -298,3 +299,67 @@ def steady_state_rule_a(
         lam_hat = float(-np.expm1(-rate * dt) / dt)
         dt = float(bounds.clip(c / lam_hat))
     return dt, float(-np.expm1(-rate * dt))
+
+
+def steady_state_share(
+    p_star: float,
+    formula: str = "exact",
+    estimator: str = "debiased",
+    scale: float = 1.0,
+) -> tuple[float, float]:
+    """Analytic steady state of rule A for one of the four combinations, constant true rate.
+
+    The rule gives ``Δt = scale · g(p*) / λ̂``. Let ``q = 1 − e^{−λΔt}`` be the
+    share of moves. At the level of expectations the estimates are
+    ``E[λ̂] = q/Δt`` for ``estimator="naive"`` and ``λ̂ = −ln(1 − q)/Δt`` for
+    ``estimator="debiased"``. The fixed point gives:
+
+    * naive: ``q = G`` and ``λΔt = −ln(1 − G)``;
+    * debiased: ``−ln(1 − q) = G`` and ``λΔt = G``,
+
+    where ``G = scale · g(p*)``. The pairs ``("exact", "debiased")`` and
+    ``("linear", "naive")`` both give ``q = p*`` and ``λΔt = −ln(1 − p*)``, which is
+    the target. The other two pairs miss it. The result holds while the interval
+    lies inside :class:`IntervalBounds`.
+
+    Parameters
+    ----------
+    p_star : float
+        Target share, in ``(0, 1)``.
+    formula : {"exact", "linear"}
+        Form of rule A. Default ``"exact"``.
+    estimator : {"naive", "debiased"}
+        Rate estimator. Default ``"debiased"``.
+    scale : float
+        Positive multiplier of the interval. Default 1.
+
+    Returns
+    -------
+    tuple of float
+        ``(share, λΔt)``: the steady share of moves and the product of the rate and
+        the mean interval. The mean interval is ``λΔt / λ``.
+
+    Raises
+    ------
+    TypeError, ValueError
+        If an argument is invalid. For the naive estimator with ``scale · g(p*) ≥ 1``
+        there is no steady state, and ``ValueError`` is raised.
+
+    Examples
+    --------
+    >>> share, lam_dt = steady_state_share(0.3, "exact", "naive")
+    >>> round(share, 4), round(lam_dt, 4)
+    (0.3567, 0.4411)
+    >>> share, lam_dt = steady_state_share(0.3, "exact", "debiased")
+    >>> round(share, 4), round(lam_dt, 4)
+    (0.3, 0.3567)
+    """
+    check_rule_a(p_star, formula, scale)
+    check_estimator(estimator)
+    g = float(scale) * (-math.log1p(-float(p_star)) if formula == "exact" else float(p_star))
+    if estimator == "naive":
+        if g >= 1.0:
+            msg = "no steady state: scale * g(p*) must be below 1 for the naive estimator"
+            raise ValueError(msg)
+        return g, -math.log1p(-g)
+    return -math.expm1(-g), g

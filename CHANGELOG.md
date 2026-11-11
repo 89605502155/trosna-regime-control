@@ -22,6 +22,13 @@ preceded it was never published; the changes against that draft are listed at th
   State version 2 restored without these fields keeps the linear rule.
 * Real-time decision intensity with exponential forgetting: `ForgettingRate`
   with the naive and debiased estimates and confidence bounds.
+* Rate estimator of the interval rule: `estimator` (`"debiased"` by default, or
+  `"naive"` for `N/T`) in `ControllerConfig`, `RegimeController` and `analyze --estimator`.
+  `ForgettingRate.estimate(estimator)` and `check_estimator`. The four combinations of
+  `formula` and `estimator` are selectable. `steady_state_share` gives the analytic steady
+  state of each. The comparison script `experiments/compare_rule_a.py` (its `--quick`
+  configuration is in `docs/en/theory.md`). State version 2 without the field restores
+  the debiased rate.
 * Martingale detectors on Bernoulli decisions at irregular intervals:
   Shiryaev–Roberts (count and time weighted), CUSUM, two-sided `TwoSided`,
   `run_lengths` for Monte Carlo.

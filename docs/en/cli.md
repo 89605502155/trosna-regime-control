@@ -32,6 +32,7 @@ the summary:
 | `--p-star` | 0.3 | probability of a move in one interval, in `(0, 1)`, for rule A |
 | `--formula` | exact | rule A: `exact` (`-ln(1-p*)/rate`) or `linear` (`p*/rate`) |
 | `--scale` | 1.0 | positive multiplier of the rule A interval |
+| `--estimator` | debiased | rate for the rule: `debiased` or `naive` (`N/T`) |
 | `--c1-over-c2` | 2.0 | ratio of costs for rule B, s |
 | `--arl` | 3600 | mean time to a false alarm of the detector, s |
 | `--confidence` | 0.95 | one-sided confidence of the detector baselines, in `[0.5, 1)` |

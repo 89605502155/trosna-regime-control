@@ -34,6 +34,34 @@ import numpy.typing as npt
 
 from .normal import baseline_z
 
+RATE_ESTIMATORS: tuple[str, ...] = ("naive", "debiased")
+
+
+def check_estimator(estimator: object) -> None:
+    """Validate the name of the rate estimator used by the interval rule.
+
+    Raises
+    ------
+    TypeError
+        If ``estimator`` is not a string.
+    ValueError
+        If ``estimator`` is not ``"naive"`` or ``"debiased"``.
+
+    Examples
+    --------
+    >>> check_estimator("naive")
+    >>> check_estimator("unbiased")
+    Traceback (most recent call last):
+    ...
+    ValueError: estimator must be 'naive' or 'debiased'
+    """
+    if not isinstance(estimator, str):
+        msg = "estimator must be a string"
+        raise TypeError(msg)
+    if estimator not in RATE_ESTIMATORS:
+        msg = "estimator must be 'naive' or 'debiased'"
+        raise ValueError(msg)
+
 
 class ForgettingRate:
     """Recursive estimate of the intensity of decisions with time forgetting.
@@ -120,14 +148,48 @@ class ForgettingRate:
         """Debiased rate ``−ln(1 − p̂) / Δ̄``, 1/s.
 
         ``p̂ = N/K`` is the share of moves and ``Δ̄ = T/K`` the mean interval.
-        The estimate is exact for a constant interval. The share is capped at
-        ``1 − 10⁻⁹`` to keep the logarithm finite. NaN before any data.
+        The estimate is exact for a constant interval: it inverts
+        ``P(b = 1) = 1 − e^{−λΔt}``. For varying intervals its bias is not derived
+        (only simulated). The share is capped at ``1 − 10⁻⁹`` to keep the logarithm
+        finite. NaN before any data.
+
+        Examples
+        --------
+        >>> import math
+        >>> est = ForgettingRate(tau=600.0)
+        >>> for _ in range(300):
+        ...     _ = est.record_check(-math.expm1(-0.25), 5.0)
+        >>> round(est.debiased, 4)
+        0.05
         """
         if self.n_checks <= 0.0 or self.exposure <= 0.0:
             return math.nan
         p = min(max(self.n_moves / self.n_checks, 0.0), 1.0 - 1e-9)
         dbar = self.exposure / self.n_checks
         return -math.log1p(-p) / dbar
+
+    def estimate(self, estimator: str = "debiased") -> float:
+        """Rate used by the interval rule: :attr:`naive` or :attr:`debiased`, 1/s.
+
+        Parameters
+        ----------
+        estimator : {"naive", "debiased"}
+            Which estimate to return. Default ``"debiased"``.
+
+        Raises
+        ------
+        TypeError, ValueError
+            If ``estimator`` is not one of the two names. See :func:`check_estimator`.
+
+        Examples
+        --------
+        >>> est = ForgettingRate(tau=600.0)
+        >>> _ = est.record_check(1.0, 5.0)
+        >>> est.estimate("naive") == est.naive
+        True
+        """
+        check_estimator(estimator)
+        return self.naive if estimator == "naive" else self.debiased
 
     def upper_naive(self) -> float:
         """Upper confidence bound of the naive rate, 1/s: ``(N + z√N + z²/2) / T``.
