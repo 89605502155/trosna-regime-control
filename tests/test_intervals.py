@@ -103,8 +103,25 @@ def test_rule_b_is_cost_minimum() -> None:
     assert best == pytest.approx(float(rule_b(lam, c1 / c2, IntervalBounds(1, 1000))), abs=0.01)
 
 
+def exact_cost_rate(dt: float, lam: float, c1: float, c2: float) -> float:
+    """Mean cost per second (C1 + C2 D) / dt with the mean delay D(dt)."""
+    delay = dt - (1.0 - math.exp(-lam * dt)) / lam
+    return (c1 + c2 * delay) / dt
+
+
+def test_exact_interval_minimises_exact_cost_rate() -> None:
+    lam, c1, c2 = 0.05, 2.0, 1.0
+    dt_star = exact_interval(lam, c1 / c2)
+    assert dt_star == pytest.approx(10.64, abs=0.01)
+    grid = np.linspace(0.5, 30.0, 59501)
+    best = grid[np.argmin([exact_cost_rate(float(x), lam, c1, c2) for x in grid])]
+    assert best == pytest.approx(dt_star, abs=0.01)
+    # The first-order condition holds at the root.
+    assert 1.0 - (1.0 + lam * dt_star) * math.exp(-lam * dt_star) == pytest.approx(lam * c1 / c2, abs=1e-12)
+
+
 def test_exact_interval_and_rule_b_numbers_from_document() -> None:
-    assert exact_interval(0.05, 2.0) == pytest.approx(8.32, abs=0.01)
+    assert exact_interval(0.05, 2.0) == pytest.approx(10.64, abs=0.01)
     assert np.sqrt(2 * 2.0 / 0.05) == pytest.approx(8.94, abs=0.01)
     with pytest.raises(ValueError, match="positive"):
         exact_interval(0.0, 2.0)

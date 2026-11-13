@@ -58,7 +58,7 @@ quantities and a cost model.
 * **Rule B**: `Δt = √(2 C₁ / (λ̂ C₂))`. It minimises the cost rate
   `J(Δt) = C₁/Δt + λC₂Δt/2`, where `C₁` is the cost of a check and `C₂` the
   cost of a second of delay. Only the ratio `C₁/C₂` matters. The exact
-  optimum of Barlow, Hunter and Proschan solves `e^{λx} − 1 − λx = λC₁/C₂`
+  optimum of Barlow, Hunter and Proschan solves `1 − (1 + λx)e^{−λx} = λC₁/C₂`
   (function `exact_interval`).
 * **Rule C**: `Δt = δ / v`, with `v` the drift of the shares in the Aitchison
   distance.

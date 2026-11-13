@@ -43,7 +43,7 @@ from trosna_regime_control import IntervalBounds, exact_interval, rule_a, rule_b
 bounds = IntervalBounds(lo=1.0, hi=10.0)
 print(round(float(rule_a(0.05, 0.3, bounds)), 2), round(float(rule_b(0.05, 2.0, bounds)), 2))
 print(round(float(rule_a(0.05, 0.3, bounds, formula="linear")), 2))  # 6.0, the linear form
-print(round(exact_interval(0.05, 2.0), 2))
+print(round(exact_interval(0.05, 2.0), 2))  # 10.64: unclipped exact optimum
 ```
 
 ## Intensity (idea 3)

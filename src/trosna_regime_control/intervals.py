@@ -226,14 +226,18 @@ def cost_rate(dt: npt.ArrayLike, rate: float, c1: float, c2: float) -> FloatArra
 def exact_interval(rate: float, c1_over_c2: float, hi: float = 1.0e6) -> float:
     """Exact optimum of the checking problem for exponential time to failure.
 
-    Solves ``e^{λx} − 1 − λx = λ C₁/C₂`` for ``x`` by bisection (Barlow, Hunter
-    and Proschan, 1963). Rule B is its first-order approximation for small
-    ``λx``. Only ``rate > 0`` is accepted.
+    Minimises the mean cost rate ``(C₁ + C₂ D(Δt)) / Δt`` with the mean delay
+    ``D(Δt) = Δt − (1 − e^{−λΔt}) / λ``. The first-order condition is
+    ``1 − (1 + λΔt) e^{−λΔt} = λ C₁ / C₂``, solved for ``Δt`` by bisection
+    (cf. Barlow, Hunter and Proschan, 1963). The result is not clipped to
+    any interval, so it can lie above the default bounds of rule A and B.
+    Rule B is its first-order approximation for small ``λΔt``. Only
+    ``rate > 0`` and ``C₁/C₂ > 0`` are accepted.
 
     Examples
     --------
     >>> round(exact_interval(0.05, 2.0), 2)
-    8.32
+    10.64
     """
     if rate <= 0.0 or c1_over_c2 <= 0.0:
         msg = "rate and C1/C2 must be positive"
@@ -241,7 +245,8 @@ def exact_interval(rate: float, c1_over_c2: float, hi: float = 1.0e6) -> float:
     target = rate * c1_over_c2
 
     def gap(x: float) -> float:
-        return float(np.expm1(rate * x) - rate * x - target)
+        # Increasing in x: its derivative is λ² x e^{−λx} > 0, so the root is unique.
+        return float(1.0 - (1.0 + rate * x) * np.exp(-rate * x) - target)
 
     lo, up = 0.0, 1.0
     while gap(up) < 0.0:

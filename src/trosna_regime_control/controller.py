@@ -58,7 +58,7 @@ class ControllerConfig:
     tau_s : float
         Memory of the rate estimate that feeds the interval rule.
     rule : {"A", "B"}
-        Interval rule: ``p*/λ̂`` or the square-root law.
+        Interval rule: ``−ln(1 − p*)/λ̂`` (rule A, default) or the square-root law (rule B).
     p_star : float
         Target probability of a move in one interval, in ``(0, 1)`` (rule A).
     formula : {"exact", "linear"}
